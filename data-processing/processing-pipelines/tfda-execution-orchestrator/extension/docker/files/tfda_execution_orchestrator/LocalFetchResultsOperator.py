@@ -18,12 +18,12 @@ class LocalFetchResultsOperator(KaapanaPythonBaseOperator):
         
         iso_env_ip = ti.xcom_pull(key="iso_env_ip", task_ids="create-iso-inst")
 
-        platform_config = kwargs["dag_run"].conf["platform_config"]        
-        request_config = kwargs["dag_run"].conf["request_config"]
+        conf = kwargs["dag_run"].conf
+        platform_config = conf["platform_config"]
         
-        request_type = request_config["request_type"]
-        platform_name = platform_config["default_platform"][request_type]
-        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][request_type]
+        workflow_type = conf["workflow_type"]
+        platform_name = platform_config["default_platform"][workflow_type]
+        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][workflow_type]
         
         fetch_results_playbook_path = os.path.join(playbooks_dir, "fetch_results.yaml")
         if not os.path.isfile(fetch_results_playbook_path):
@@ -33,7 +33,7 @@ class LocalFetchResultsOperator(KaapanaPythonBaseOperator):
         ssh_key_name = platform_config["platforms"][platform_name]["platform_flavors"][flavor_name]["ssh_key_name"]
         remote_username = platform_config["platforms"][platform_name]["platform_flavors"][flavor_name]["remote_username"]
         
-        logging.info(f"Fetching results from isolated execution environment for {request_type} workflow...")
+        logging.info(f"Fetching results from isolated execution environment for {workflow_type} workflow...")
         playbook_args = f"target_host={iso_env_ip} ssh_key_name={ssh_key_name} remote_username={remote_username} results_path={results_path}"
         command = ["ansible-playbook", fetch_results_playbook_path, "--extra-vars", playbook_args]
         process = subprocess.Popen(command, stdout=PIPE, stderr=PIPE, encoding="Utf-8")

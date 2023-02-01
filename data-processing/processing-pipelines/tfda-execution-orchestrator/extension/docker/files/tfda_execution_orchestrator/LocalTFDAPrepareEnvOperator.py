@@ -18,14 +18,15 @@ class LocalTFDAPrepareEnvOperator(KaapanaPythonBaseOperator):
         
         iso_env_ip = ti.xcom_pull(key="iso_env_ip", task_ids="create-iso-inst")
 
-        platform_config = kwargs["dag_run"].conf["platform_config"]        
-        request_config = kwargs["dag_run"].conf["request_config"]
+        conf = kwargs["dag_run"].conf
+        platform_config = conf["platform_config"]
         
-        request_type = request_config["request_type"]
-        platform_name = platform_config["default_platform"][request_type]
-        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][request_type]
-
-        python_packages = request_config["python_packages"]
+        workflow_type = conf["workflow_type"]
+        platform_name = platform_config["default_platform"][workflow_type]
+        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][workflow_type]
+        ##TODO get a list of Python packages to be installed from the UI side
+        # python_packages = conf["python_packages"]
+        python_packages = []
         if python_packages:
             requirements_filepath = os.path.join(playbooks_dir, "requirements.txt")
             with open(requirements_filepath, "w") as myfile:

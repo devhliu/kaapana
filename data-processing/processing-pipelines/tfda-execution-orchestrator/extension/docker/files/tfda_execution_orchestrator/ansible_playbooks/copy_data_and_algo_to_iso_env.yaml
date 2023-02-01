@@ -17,9 +17,9 @@
   remote_user: "{{ remote_username }}"
   vars:
     ansible_ssh_private_key_file: ~/.ssh/{{ ssh_key_name }}
-    src_algorithm_dir: "{{ src_algorithm_files_path }}/{{ user_selected_algo }}"
-    dst_algorithm_dir: /home/{{ remote_username }}/algorithm_files/{{ user_selected_algo }}
-    dst_data_dir: /home/{{ remote_username }}/{{ user_selected_study_data }}
+    src_algorithm_dir: "{{ src_algorithm_files_path }}/{{ user_experiment_name }}"
+    dst_algorithm_dir: /home/{{ remote_username }}/algorithm_files/{{ user_experiment_name }}
+    dst_data_dir: /home/{{ remote_username }}/{{ user_selected_data }}
   # TODO: data could be in any or multiple instances
   tasks:
     - name: Check if all required variables are passed using --extra-vars
@@ -52,7 +52,7 @@
     - name: Copy user selected study-data bucket to Iso
       become: yes
       copy:
-        src: "{{ src_study_data_path }}/"
+        src: "{{ src_data_path }}/"
         dest: "{{ dst_data_dir }}"
         # directory_mode: yes
         owner: "{{ ansible_user_id }}"

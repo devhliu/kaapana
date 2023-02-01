@@ -17,12 +17,12 @@ class LocalManageIsoInstanceOperator(KaapanaPythonBaseOperator):
         elif self.instanceState == "absent":
             logging.info("Deleting isolated environment...")
 
-        request_config = kwargs["dag_run"].conf["request_config"]
-        request_type = request_config["request_type"]
-
-        platform_config = kwargs["dag_run"].conf["platform_config"]
-        platform_name = platform_config["default_platform"][request_type]
-        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][request_type]
+        conf = kwargs["dag_run"].conf
+        platform_config = conf["platform_config"]
+        
+        workflow_type = conf["workflow_type"]
+        platform_name = platform_config["default_platform"][workflow_type]
+        flavor_name = platform_config["platforms"][platform_name]["default_flavor"][workflow_type]
         
         operator_dir = os.path.dirname(os.path.abspath(__file__))
         playbooks_dir = os.path.join(operator_dir, "ansible_playbooks")
@@ -30,7 +30,7 @@ class LocalManageIsoInstanceOperator(KaapanaPythonBaseOperator):
         if not os.path.isfile(playbook_path):
             raise AirflowFailException(f"Playbook '{playbook_path}' file not found!")
 
-        playbook_args = f"instance_name={request_type}_instance instance_state={self.instanceState}"
+        playbook_args = f"instance_name={workflow_type}_instance instance_state={self.instanceState}"
         
         if platform_name in ["openstack", "qemu_kvm"]:
             for key, value in platform_config["platforms"][platform_name]["platform_flavors"][flavor_name].items():

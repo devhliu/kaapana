@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import requests
 #import yaml
 import subprocess
 from subprocess import PIPE
@@ -27,49 +28,51 @@ class LocalTFDATestingOperator(KaapanaPythonBaseOperator):
         return return_code
     
     
-    def load_config(self, config_filepath, format):
+    def load_config(self, config_filepath):
         with open(config_filepath, "r") as stream:
             try:
-                if format == "json":
-                    config_dict = json.load(stream)
-                ## TODO: yaml is out of request now, so commenting out,, can be removed later
-                #elif format == "yaml":
-                    #config_dict = yaml.safe_load(stream)
+                config_dict = json.load(stream)
                 return config_dict
             except Exception as exc:
                 raise AirflowFailException(f"Could not extract configuration due to error: {exc}!!")
     
-    def extract_info_from_request(self, request_config):
+    def process_request(self, request_params):
         operator_dir = os.path.dirname(os.path.abspath(__file__))
-        user_algorithm_path = os.path.join(operator_dir, "algorithm_files", request_config["request_type"], request_config["user_selected_algorithm"])
-        Path(user_algorithm_path).mkdir(parents=True, exist_ok=True)
-        if request_config["request_type"] == "shell_execute":            
-            bash_script_path = os.path.join(user_algorithm_path, "user_input_commands.sh")
+        user_experiment_path = os.path.join(operator_dir, "algorithm_files", request_params["workflow_type"], request_params["experiment_name"])
+        Path(user_experiment_path).mkdir(parents=True, exist_ok=True)
+        if request_params["workflow_type"] == "shell_workflow":            
+            bash_script_path = os.path.join(user_experiment_path, "user_input_commands.sh")
             # os.path.exists(bash_script_path)
-            with open(bash_script_path, "w") as stream:
-                stream.write(request_config["bash_string"])
-        elif request_config["request_type"] == "container_workflow":
+            download_url = request_params["download_url"]
+            try:
+                response = requests.get(download_url)
+                response.raise_for_status()
+                with open(os.path.join(user_experiment_path, f"{request_params['experiment_name']}.zip"), "wb") as file:
+                    file.write(response.content)
+            except requests.exceptions.RequestException as e:
+                print(f"An error occurred while downloading the file: {e}")
+        elif request_params["request_type"] == "container_workflow":
             logging.debug("Downloading container from registry since container workflow is requested...")
             logging.info("Logging into container registry!!!") 
-            command = ["skopeo", "login", "--username", f"{request_config['container']['username']}", "--password", f"{request_config['container']['password']}", f"{request_config['container']['registry_url']}"]
+            command = ["skopeo", "login", "--username", f"{request_params['container']['username']}", "--password", f"{request_params['container']['password']}", f"{request_params['container']['registry_url']}"]
             return_code = self.run_command(command=command)
             if return_code == 0:
                 logging.info(f"Login to the registry successful!!")
             else:
                 raise AirflowFailException("Login to the registry FAILED! Cannot proceed further...")
 
-            logging.debug(f"Pulling container: {request_config['container']['name']}:{request_config['container']['version']}...")
-            tarball_file = os.path.join(user_algorithm_path, f"{request_config['user_selected_algorithm']}.tar")
+            logging.debug(f"Pulling container: {request_params['container']['name']}:{request_params['container']['version']}...")
+            tarball_file = os.path.join(user_experiment_path, f"{request_params['user_selected_algorithm']}.tar")
             if os.path.exists(tarball_file):
                 logging.debug(f"Submission tarball already exists locally... deleting it now to pull latest!!")
                 os.remove(tarball_file)
             ## Due to absense of /etc/containers/policy.json in Airflow container, following Skopeo command only works with "--insecure-policy"
-            command2 = ["skopeo", "--insecure-policy", "copy", f"docker://{request_config['container']['registry_url']}/{request_config['container']['name']}:{request_config['container']['version']}", f"docker-archive:{tarball_file}", "--additional-tag", f"{request_config['container']['name']}:{request_config['container']['version']}"]
+            command2 = ["skopeo", "--insecure-policy", "copy", f"docker://{request_params['container']['registry_url']}/{request_params['container']['name']}:{request_params['container']['version']}", f"docker-archive:{tarball_file}", "--additional-tag", f"{request_params['container']['name']}:{request_params['container']['version']}"]
             return_code2 = self.run_command(command=command2)
             if return_code2 != 0:
                 raise AirflowFailException(f"Error while trying to download container! Exiting...")        
         else:
-            raise AirflowFailException(f"Workflow type {request_config['request_type']} not supported yet! Exiting...")
+            raise AirflowFailException(f"Workflow type {request_params['request_type']} not supported yet! Exiting...")
 
     
     def get_most_recent_dag_run(self, dag_id):
@@ -80,18 +83,19 @@ class LocalTFDATestingOperator(KaapanaPythonBaseOperator):
     def start(self, ds, ti, **kwargs):
         operator_dir = os.path.dirname(os.path.abspath(__file__))
         platform_config_path = os.path.join(operator_dir, "platform_specific_configs", "platform_config.json")
-        #request_config_path = os.path.join(operator_dir, "request_specific_configs", "request_config.yaml")
+        self.conf = kwargs['dag_run'].conf
+        logging.info("Loading platform specific configuration...")
+        platform_config = self.load_config(platform_config_path)
         
-        logging.info("Loading platform and request specific configurations...")
-        platform_config = self.load_config(platform_config_path, "json")
-        #request_config = self.load_config(request_config_path, "yaml")
-        self.extract_info_from_request(request_config)
-        
+        logging.info("Processing user reqeust...")
+        self.process_request(self.conf)
         self.trigger_dag_id = "dag-tfda-execution-orchestrator"
         # self.dag_run_id = kwargs['dag_run'].run_id
-        self.conf = kwargs['dag_run'].conf
+        #self.conf = kwargs['dag_run'].conf
+       
         self.conf["platform_config"] = platform_config
-        self.conf["request_config"] = request_config
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        print(self.conf)
         dag_run_id = generate_run_id(self.trigger_dag_id)
         logging.info("Triggering isolated execution orchestrator...")
         try:

@@ -1,12 +1,13 @@
 {
   "default_platform": {
-    "shell_execute": "qemu_kvm",
+    "shell_workflow": "qemu_kvm",
+    "container_workflow": "openstack",
     "kaapana_workflow": "openstack"
   },
-  "platform_config": {
+  "platforms": {
     "openstack": {
       "default_flavor": {
-        "shell_execute": "flavor_1",
+        "shell_workflow": "flavor_1",
         "kaapana_workflow": "flavor_2"
       },
       "platform_flavors": {
@@ -44,7 +45,8 @@
     },
     "qemu_kvm": {
       "default_flavor": {
-        "shell_execute": "flavor_1",
+        "shell_workflow": "flavor_1",
+        "container_workflow": "flavor_2",
         "kaapana_workflow": "flavor_1"
       },
       "platform_flavors": {

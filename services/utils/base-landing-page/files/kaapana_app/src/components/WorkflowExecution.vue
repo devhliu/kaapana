@@ -34,7 +34,7 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                 </v-radio>
               </v-radio-group>
             v-col(cols='12') 
-             <v-radio-group v-model="radio_wf_type" row>
+             <v-radio-group v-model="workflow_type" row>
                <template v-slot:label>
                  <div>Workflow Type:</div> 
                    
@@ -44,33 +44,30 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                    <div>Dags</div>
                  </template>
                </v-radio>
-               <v-radio v-if="radio_isolation!=='No'" value="bash">
+               <v-radio v-if="radio_isolation!=='No'" value="shell_workflow">
                  <template v-slot:label>
                    <div>Bash Script</div>
                  </template>
                </v-radio>
-               <v-radio v-if="radio_isolation!=='No'" value="docker">
+               <v-radio v-if="radio_isolation!=='No'" value="container_workflow">
                  <template v-slot:label>
                    <div>Docker Container</div>
                  </template>
                </v-radio>
              </v-radio-group>
-            v-col(v-if="radio_wf_type =='bash'" cols='12')
+            v-col(v-if="workflow_type =='shell_workflow'" cols='12')
               v-select(v-model='bucket_id' :items='available_minio_buckets' label='Minio Buckets' chips='')
-            v-col(v-if="radio_wf_type =='bash'" cols='12')
-              v-text-field(v-model='bash_url' label='Enter URL to download bash and supporting scripts (.zip format)' required='')
-            v-col(v-if="radio_wf_type =='bash'" cols='12')
-              v-text-field(v-model='bash_cmd' label='Enter your bash command' required='')
+            v-col(v-if="workflow_type =='shell_workflow'" cols='12')
+              v-text-field(v-model='download_url' label='Enter URL to download shell workflow and supporting scripts (.zip format)' required='')
+            v-col(v-if="workflow_type =='shell_workflow'" cols='12')
+              v-text-field(v-model='bash_cmd' label='Enter your shell workflow command' required='')
             
-            v-col(v-if="radio_wf_type=='docker'" cols='12')
-              v-text-field(v-model='docker_registry' label='Enter docker registry' required='')
-              v-text-field(v-model='docker_uname' label='Enter docker registry username' required='')
-              v-text-field(v-model='docker_pwd' label='Enter docker registry password' required='')
-            //-v-col(v-if="radio_wf_type!=='docker'" cols='12')
-              
-            //-v-col(v-if="radio_wf_type!=='docker'" cols='12')
+            v-col(v-if="workflow_type=='container_workflow'" cols='12')
+              v-text-field(v-model='docker_registry' label='Enter container registry' required='')
+              v-text-field(v-model='docker_uname' label='Enter container registry username' required='')
+              v-text-field(v-model='docker_pwd' label='Enter container registry password' required='')
              
-            v-col(v-if="instance_names.length && radio_wf_type!=='bash' && radio_wf_type!=='docker' " cols='12')
+            v-col(v-if="instance_names.length && workflow_type!=='shell_workflow' && workflow_type!=='container_workflow' " cols='12')
               v-select(v-model='dag_id' :items='available_dags' label='Dags' chips='' hint='Select a dag')
             
             //- v-if="!(remote==false && name=='federated_form')"
@@ -98,8 +95,8 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                 pre.text-left Instance name: {{instance_names}}
                 pre.text-left External instance name: {{external_instance_names}}
                 pre.text-left Isolation: {{radio_isolation}}
-                pre.text-left Workflow Type: {{radio_wf_type}}
-                pre.text-left Bash Url: {{bash_url}}
+                pre.text-left Workflow Type: {{workflow_type}}
+                pre.text-left Bash Url: {{download_url}}
                 pre.text-left Bash Cmd: {{bash_cmd}}
                 pre.text-left Bucket ID: {{bucket_id}}
                 pre.text-left Docker Registry: {{docker_registry}}
@@ -144,8 +141,8 @@ export default {
     federated_data: false,
     remote_data:false,
     radio_isolation: 'No',
-    radio_wf_type: 'dags',
-    bash_url: null,
+    workflow_type: 'dags',
+    download_url: null,
     bash_cmd: null,
     docker_registry: null,
     docker_uname: null,
@@ -303,12 +300,10 @@ export default {
       kaapanaApiService
         .minioApiget("/buckets")
         .then((response) => {
-          // this.available_minio_buckets = JSON.stringify(response.data);
           this.response = response.data
-          console.log("Available Buckets !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!: ", this.available_minio_buckets)
           const keyName = 'name';
           this.available_minio_buckets = this.response.map(item => item[keyName]);
-          console.log("values §§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§ ", this.available_minio_buckets)
+          console.log("Available Buckets:", this.available_minio_buckets)
 
         
         })
@@ -329,8 +324,7 @@ export default {
     submitWorkflow() {
 
       if (this.radio_isolation !== "No") {
-        console.log(
-          "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&  calling TFDA TEST DAG !!!!!!!!!!!!!!!!!!!!!!! "
+        console.log("TFDA Main Dag Called"
         );
         
         request.post("/flow/kaapana/api/trigger/dag-tfda-testing-workflow", {
@@ -339,8 +333,8 @@ export default {
             experiment_name: this.experiment_name,
             //dag_id: this.dag_id,
             instance_names: this.instance_names, 
-            radio_wf_type: this.radio_wf_type,
-            bash_url: this.bash_url,
+            workflow_type: this.workflow_type,
+            download_url: this.download_url,
             bash_cmd: this.bash_cmd,
             bucket_id: this.bucket_id,
             docker_registry: this.docker_registry,
@@ -353,10 +347,6 @@ export default {
           })
           .then((response) => {
             this.response = JSON.stringify(response.data);
-            console.log(
-              "response from AIRFLWO DAAGAGAGA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!: ",
-              this.response
-            );
           })
           .catch((err) => {
             console.log(err);

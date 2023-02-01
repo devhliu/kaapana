@@ -16,7 +16,6 @@
   remote_user: "{{ remote_username }}"
   vars:
     ansible_ssh_private_key_file: ~/.ssh/{{ ssh_key_name }}
-    dst_results_dir: /home/{{ remote_username }}/results
   environment:
     PATH: '/home/{{ remote_username }}/.local/bin:{{ ansible_env.PATH }}'
 
@@ -30,12 +29,15 @@
 
     - name: Create results directory if it doesn't exist
       file:
-        path: "{{ dst_results_dir }}"
+        path: /home/{{ remote_username }}/results
         state: directory
         recurse: yes
-
+    
+    - name: Unzip user experiment files
+      command: "unzip /home/{{ remote_username }}/algorithm_files/{{ user_experiment_name }}/{{ user_experiment_name }}.zip -d /home/{{ remote_username }}/algorithm_files/{{ user_experiment_name }}"
+    
     - name: Run user shell workflow
       become: no
-      shell: bash /home/{{ remote_username }}/algorithm_files/{{ user_selected_algo }}/*.sh
+      shell: bash /home/{{ remote_username }}/algorithm_files/{{ user_experiment_name }}/main.sh
 
     # - debug: msg="{{ '%H:%M:%S' | strftime }}"
