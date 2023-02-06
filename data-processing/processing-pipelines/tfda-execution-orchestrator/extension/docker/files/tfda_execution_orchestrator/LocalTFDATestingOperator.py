@@ -87,7 +87,7 @@ class LocalTFDATestingOperator(KaapanaPythonBaseOperator):
         logging.info("Loading platform specific configuration...")
         platform_config = self.load_config(platform_config_path)
         
-        logging.info("Processing user reqeust...")
+        logging.info("Processing user request...")
         self.process_request(self.conf)
         self.trigger_dag_id = "dag-tfda-execution-orchestrator"
         # self.dag_run_id = kwargs['dag_run'].run_id
