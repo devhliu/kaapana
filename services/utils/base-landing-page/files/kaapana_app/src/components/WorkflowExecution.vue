@@ -56,7 +56,7 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                </v-radio>
              </v-radio-group>
             v-col(v-if="workflow_type =='shell_workflow'" cols='12')
-              v-select(v-model='bucket_id' :items='available_minio_buckets' label='Minio Buckets' chips='')
+              v-select(v-model='bucket_id' :items='final_available_datasets' label='Choose Dataset' chips='')
             v-col(v-if="workflow_type =='shell_workflow'" cols='12')
               v-text-field(v-model='download_url' label='Enter URL to download shell workflow and supporting scripts (.zip format)' required='')
             v-col(v-if="workflow_type =='shell_workflow'" cols='12')
@@ -130,6 +130,7 @@ export default {
     // formDataFormatted: {},
     available_dags: [],
     available_minio_buckets: [],
+    available_meta_cohorts: [],
     instance_names: [],
     external_instance_names: [],
     external_dag_id: null,
@@ -167,6 +168,11 @@ export default {
       console.log("instances: ", this.instances)
       return this.instances.map(({ instance_name }) => instance_name);
     },
+    final_available_datasets () {
+      //const final_available_datasets  = [...this.available_minio_buckets, ...this.available_meta_cohorts];
+      console.log("Final_available_datasets: ", [...this.available_minio_buckets, ...this.available_meta_cohorts])
+      return [...this.available_minio_buckets, ...this.available_meta_cohorts]
+    },
     formDataFormatted () {
       return this.formatFormData(this.formData)
     }
@@ -182,7 +188,8 @@ export default {
     },
     instance_names() {
       this.getDags()
-      this.getBuckets()
+      this.getMinioBuckets()
+      this.getCohorts()
       this.resetFormData()
     },
     experiment_name() {
@@ -296,15 +303,28 @@ export default {
           console.log(err);
         });
     },
-    getBuckets() {
+    getMinioBuckets() {
       kaapanaApiService
         .minioApiget("/buckets")
         .then((response) => {
           this.response = response.data
           const keyName = 'name';
           this.available_minio_buckets = this.response.map(item => item[keyName]);
-          console.log("Available Buckets:", this.available_minio_buckets)
-
+          //console.log("Available Buckets:", this.available_minio_buckets)
+        
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    },
+    getCohorts() {
+      kaapanaApiService
+        .federatedClientApiGet("/cohort-names")
+        .then((response) => {
+          this.available_meta_cohorts = response.data
+          //const keyName = 'name';
+          //this.available_minio_buckets = this.response.map(item => item[keyName]);
+          //console.log("!!!!!!!!!!!!!!!!!!!!!!!!!Available Cohorts:", this.available_meta_cohorts)
         
         })
         .catch((err) => {
