@@ -32,6 +32,8 @@ spec:
         env:
         - name: DCM4CHEE
           value: "http://dcm4chee-service.store.svc:8080"
+        - name: CTP_URL
+          value: "ctp-dicom-service.store.svc"
         - name: AET
           value: "KAAPANA"
         - name: OPENSEARCH_HOST
