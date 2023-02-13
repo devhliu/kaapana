@@ -59,8 +59,8 @@ v-dialog(v-model='dialogOpen' max-width='600px')
               v-select(v-model='bucket_id' :items='final_available_datasets' label='Choose Dataset' chips='')
             v-col(v-if="workflow_type =='shell_workflow'" cols='12')
               v-text-field(v-model='download_url' label='Enter URL to download shell workflow and supporting scripts (.zip format)' required='')
-            v-col(v-if="workflow_type =='shell_workflow'" cols='12')
-              v-text-field(v-model='bash_cmd' label='Enter your shell workflow command' required='')
+            //- v-col(v-if="workflow_type =='shell_workflow'" cols='12')
+            //-   v-text-field(v-model='bash_cmd' label='Enter your shell workflow command' required='')
             
             v-col(v-if="workflow_type=='container_workflow'" cols='12')
               v-text-field(v-model='docker_registry' label='Enter container registry' required='')
@@ -97,7 +97,7 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                 pre.text-left Isolation: {{radio_isolation}}
                 pre.text-left Workflow Type: {{workflow_type}}
                 pre.text-left Bash Url: {{download_url}}
-                pre.text-left Bash Cmd: {{bash_cmd}}
+                //- pre.text-left Bash Cmd: {{bash_cmd}}
                 pre.text-left Bucket ID: {{bucket_id}}
                 pre.text-left Docker Registry: {{docker_registry}}
                 pre.text-left Docker Uname: {{docker_uname}}
@@ -144,7 +144,7 @@ export default {
     radio_isolation: 'No',
     workflow_type: 'dags',
     download_url: null,
-    bash_cmd: null,
+    // bash_cmd: null,
     docker_registry: null,
     docker_uname: null,
     docker_pwd: null,
@@ -355,7 +355,7 @@ export default {
             instance_names: this.instance_names, 
             workflow_type: this.workflow_type,
             download_url: this.download_url,
-            bash_cmd: this.bash_cmd,
+            // bash_cmd: this.bash_cmd,
             bucket_id: this.bucket_id,
             docker_registry: this.docker_registry,
             docker_uname: this.docker_uname,
