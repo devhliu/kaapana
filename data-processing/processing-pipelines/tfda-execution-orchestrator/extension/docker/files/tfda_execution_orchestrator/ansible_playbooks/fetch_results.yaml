@@ -35,7 +35,9 @@
         file_type: file
         recurse: yes
       register: result_files
-      failed_when: result_files.matched == 0
+      fail:
+        msg: No result files could be found!!
+        when: result_files.matched == 0
 
     - name: Create an archive of results into a zip file
       archive: 

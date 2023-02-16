@@ -36,7 +36,7 @@
 
     - name: Load container via Docker
       community.docker.docker_image_load:
-        path: /home/{{ remote_username }}/algorithm_files/{{ user_selected_algo }}/{{ user_selected_algo }}.tar
+        path: /home/{{ remote_username }}/algorithm_files/{{ user_experiment_name }}/{{ user_experiment_name }}.tar
       register: result
 
     - name: Print the loaded image names
@@ -44,7 +44,7 @@
         msg: "Loaded the following images: {{ result.image_names | join(', ') }}"
     
     - name: Run the loaded docker container
-      command: docker run "{{ user_selected_algo }}"
+      command: docker run "{{ user_container_name_version }}"
       register: docker_run
 
     - debug:

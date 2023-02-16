@@ -41,31 +41,31 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                </template>
                <v-radio value="dags">
                  <template v-slot:label>
-                   <div>Dags</div>
+                   <div>DAG</div>
                  </template>
                </v-radio>
                <v-radio v-if="radio_isolation!=='No'" value="shell_workflow">
                  <template v-slot:label>
-                   <div>Bash Script</div>
+                   <div>Shell</div>
                  </template>
                </v-radio>
                <v-radio v-if="radio_isolation!=='No'" value="container_workflow">
                  <template v-slot:label>
-                   <div>Docker Container</div>
+                   <div>Container</div>
                  </template>
                </v-radio>
              </v-radio-group>
             v-col(v-if="workflow_type =='shell_workflow'" cols='12')
               v-select(v-model='bucket_id' :items='final_available_datasets' label='Choose Dataset' chips='')
-            v-col(v-if="workflow_type =='shell_workflow'" cols='12')
-              v-text-field(v-model='download_url' label='Enter URL to download shell workflow and supporting scripts (.zip format)' required='')
-            //- v-col(v-if="workflow_type =='shell_workflow'" cols='12')
-            //-   v-text-field(v-model='bash_cmd' label='Enter your shell workflow command' required='')
+              v-text-field(v-model='download_url' label='Enter URL to download shell script and supporting files (.zip format)' required='')
+              //- v-text-field(v-model='bash_cmd' label='Enter your shell workflow command' required='')
             
             v-col(v-if="workflow_type=='container_workflow'" cols='12')
-              v-text-field(v-model='docker_registry' label='Enter container registry' required='')
-              v-text-field(v-model='docker_uname' label='Enter container registry username' required='')
-              v-text-field(v-model='docker_pwd' label='Enter container registry password' required='')
+              v-select(v-model='bucket_id' :items='final_available_datasets' label='Choose Dataset' chips='')
+              v-text-field(v-model='container_registry_url' label='Enter container registry URL' required='')
+              v-text-field(v-model='container_registry_user' label='Enter container registry username' required='')
+              v-text-field(v-model='container_registry_pwd' label='Enter container registry password' required='')
+              v-text-field(v-model='container_name_version' label='Enter container name:version' required='')
              
             v-col(v-if="instance_names.length && workflow_type!=='shell_workflow' && workflow_type!=='container_workflow' " cols='12')
               v-select(v-model='dag_id' :items='available_dags' label='Dags' chips='' hint='Select a dag')
@@ -99,9 +99,10 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                 pre.text-left Bash Url: {{download_url}}
                 //- pre.text-left Bash Cmd: {{bash_cmd}}
                 pre.text-left Bucket ID: {{bucket_id}}
-                pre.text-left Docker Registry: {{docker_registry}}
-                pre.text-left Docker Uname: {{docker_uname}}
-                pre.text-left Docker Pwd: {{docker_pwd}}
+                pre.text-left Container Registry URL: {{container_registry_url}}
+                pre.text-left Registry User: {{container_registry_user}}
+                pre.text-left Registry Pwd: {{container_registry_pwd}}
+                pre.text-left Container name:version: {{container_name_version}}
 
                 pre.text-left {{ formDataFormatted }}
       v-card-actions
@@ -145,9 +146,10 @@ export default {
     workflow_type: 'dags',
     download_url: null,
     // bash_cmd: null,
-    docker_registry: null,
-    docker_uname: null,
-    docker_pwd: null,
+    container_registry_url: null,
+    container_registry_user: null,
+    container_registry_pwd: null,
+    container_name_version: null
   }),
   props: {
     remote: {
@@ -357,9 +359,10 @@ export default {
             download_url: this.download_url,
             // bash_cmd: this.bash_cmd,
             bucket_id: this.bucket_id,
-            docker_registry: this.docker_registry,
-            docker_uname: this.docker_uname,
-            docker_pwd: this.docker_pwd         
+            container_registry_url: this.container_registry_url,
+            container_registry_user: this.container_registry_user,
+            container_registry_pwd: this.container_registry_pwd,         
+            container_name_version: this.container_name_version
             //conf_data: this.formatFormData(this.formData),
             //remote: this.remote_data,
             //federated: this.federated_data,

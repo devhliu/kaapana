@@ -29,13 +29,14 @@ class LocalRunAlgoOperator(KaapanaPythonBaseOperator):
         
         user_selected_data = conf["bucket_id"]
         user_experiment_name = conf["experiment_name"]
+        user_container_name_version = conf["container_name_version"]
         
         # ssh_key_path = platform_config["platform_config"][platform_name]["platform_flavors"][flavor_name]["ssh_key_path"]
         ssh_key_name = platform_config["platforms"][platform_name]["platform_flavors"][flavor_name]["ssh_key_name"]
         remote_username = platform_config["platforms"][platform_name]["platform_flavors"][flavor_name]["remote_username"]
 
         logging.info(f"Running {workflow_type}...")
-        playbook_args = f"target_host={iso_env_ip} ssh_key_name={ssh_key_name} user_experiment_name={user_experiment_name} user_selected_data={user_selected_data} remote_username={remote_username}"
+        playbook_args = f"target_host={iso_env_ip} ssh_key_name={ssh_key_name} user_experiment_name={user_experiment_name} user_selected_data={user_selected_data} user_container_name_version={user_container_name_version} remote_username={remote_username}"
         command = ["ansible-playbook", run_workflow_playbook_path, "--extra-vars", playbook_args]
         process = subprocess.Popen(command, stdout=PIPE, stderr=PIPE, encoding="Utf-8")
         while True:
