@@ -3,13 +3,13 @@
     <div ref="canvas" class="cover" oncontextmenu="return false"/>
     <div v-if="loading" class="cover overlay">
       <v-row
-        class="fill-height ma-0"
-        align="center"
-        justify="center"
+          class="fill-height ma-0"
+          align="center"
+          justify="center"
       >
         <v-progress-circular
-          indeterminate
-          color="primary"
+            indeterminate
+            color="primary"
         />
       </v-row>
     </div>
@@ -20,57 +20,102 @@
 /* eslint-disable */
 
 // Packages
-import * as cornerstone from "cornerstone-core";
-import * as dicomParser from "dicom-parser";
+import {
+  RenderingEngine,
+  Types,
+  Enums,
+  setVolumesForViewports,
+  volumeLoader,
+  imageLoader
+} from '@cornerstonejs/core';
+import * as cornerstone from "@cornerstonejs/core";
+import * as cornerstoneTools from '@cornerstonejs/tools';
+import createImageIdsAndCacheMetaData from "../utils/cornerstone/createImageIdsAndCacheMetaData";
+import {addTool, StackScrollMouseWheelTool, ToolGroupManager, WindowLevelTool, ZoomTool} from "@cornerstonejs/tools";
+import {MouseBindings} from "@cornerstonejs/tools/dist/cjs/enums";
+import initDemo from "../utils/cornerstone/initDemo";
 
-import * as cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
+const {
+  SegmentationDisplayTool,
+  Enums: csToolsEnums,
+  segmentation,
+} = cornerstoneTools;
 
-import Hammer from "hammerjs";
-import * as cornerstoneMath from "cornerstone-math";
-import * as cornerstoneTools from "cornerstone-tools";
-import * as dcmjs from "../static/dist/dcmjs";
-import {loadDicom, loadSeriesMetaData} from "../common/api.service.js";
+const {ViewportType} = Enums;
 
-cornerstoneTools.external.Hammer = Hammer;
-cornerstoneTools.external.cornerstone = cornerstone;
-cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
+const volumeName = 'CT_VOLUME_ID'; // Id of the volume less loader prefix
+const volumeLoaderScheme = 'cornerstoneStreamingImageVolume'; // Loader id which defines which volume loader to use
+// const volumeId = `${volumeLoaderScheme}:${volumeName}`; // VolumeId with loader id + volume id
+const segmentationId = 'MY_SEGMENTATION_ID';
+const toolGroupId = 'ToolGroup';
+const renderingEngineId = 'renderEngine'
+const viewportId = 'Cornerstone'
 
-cornerstoneTools.init();
+function createMockEllipsoidSegmentation(segmentationVolume) {
+  const scalarData = segmentationVolume.scalarData;
+  const {dimensions} = segmentationVolume;
 
-cornerstoneWADOImageLoader.external.cornerstoneMath = cornerstoneMath;
-cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
-cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+  const center = [dimensions[0] / 2, dimensions[1] / 2, dimensions[2] / 2];
+  const outerRadius = 50;
+  const innerRadius = 10;
 
-const config = {
-  taskConfiguration: {
-    decodeTask: {
-      loadCodecsOnStartup: true,
-      initializeCodecsOnStartup: false,
-      codecsPath: "../static/dist/cornerstoneWADOImageLoaderCodecs.js",
-      usePDFJS: false,
-      strict: false
+  let voxelIndex = 0;
+
+  for (let z = 0; z < dimensions[2]; z++) {
+    for (let y = 0; y < dimensions[1]; y++) {
+      for (let x = 0; x < dimensions[0]; x++) {
+        const distanceFromCenter = Math.sqrt(
+            (x - center[0]) * (x - center[0]) +
+            (y - center[1]) * (y - center[1]) +
+            (z - center[2]) * (z - center[2])
+        );
+        if (distanceFromCenter < innerRadius) {
+          scalarData[voxelIndex] = 1;
+        } else if (distanceFromCenter < outerRadius) {
+          scalarData[voxelIndex] = 2;
+        }
+
+        voxelIndex++;
+      }
     }
   }
-};
-cornerstoneWADOImageLoader.webWorkerManager.initialize(config);
-
-const metaData = {}
-
-function metaDataProvider(type, imageId) {
-  if (!metaData[imageId]) {
-    return;
-  }
-
-  return metaData[imageId][type];
 }
 
-cornerstone.metaData.addProvider(metaDataProvider);
+async function addSegmentationsToState(volumeId) {
+  // Create a segmentation of the same resolution as the source data
+  // using volumeLoader.createAndCacheDerivedVolume.
+  const segmentationVolume = await volumeLoader.createAndCacheDerivedVolume(
+      volumeId,
+      {
+        volumeId: segmentationId,
+      }
+  );
 
-function addMetaData(type, imageId, data) {
-  metaData[imageId] = metaData[imageId] || {};
-  metaData[imageId][type] = data;
+  // Add the segmentations to state
+  segmentation.addSegmentations([
+    {
+      segmentationId,
+      representation: {
+        // The type of segmentation
+        type: csToolsEnums.SegmentationRepresentations.Labelmap,
+        // The actual segmentation data, in the case of labelmap this is a
+        // reference to the source volume of the segmentation.
+        data: {
+          volumeId: segmentationId,
+        },
+      },
+    },
+  ]);
+
+  // Add some data to the segmentations
+  createMockEllipsoidSegmentation(segmentationVolume);
 }
 
+initDemo()
+
+// TODO: Segmentation support
+// TODO: Decision rule whether to go with Stack viewer or volume viewer
+// TODO: Cancel loading once new file is selected
 
 export default {
   name: "CornerStone",
@@ -84,130 +129,173 @@ export default {
   },
   data() {
     return {
-      loading: true
+      loading: false,
+      renderingEngine: null,
     }
   },
   methods: {
-    async load_segmentations(instance) {
-      const element = this.canvas
-      const arrayBuffer = await loadDicom(
-        instance.studyInstanceUID,
-        instance.seriesInstanceUID,
-        instance.objectUID
-      )
+    async load_volume(imageIds) {
+      this.renderingEngine.enableElement({
+        viewportId: viewportId,
+        type: ViewportType.ORTHOGRAPHIC,
+        element: this.$refs.canvas,
+        defaultOptions: {
+          orientation: Enums.OrientationAxis.AXIAL,
+        },
+      });
 
-      const stackToolState = cornerstoneTools.getToolState(
-        element,
-        "stack"
-      );
-      const imageIds_ = stackToolState.data[0].imageIds;
+      const volumeId = this.seriesInstanceUID
 
-      const {
-        labelmapBufferArray,
-        segMetadata,
-        segmentsOnFrame
-      } = dcmjs.adapters.Cornerstone.Segmentation.generateToolState(
-        imageIds_,
-        arrayBuffer,
-        cornerstone.metaData,
+      // Define a volume in memory
+      const volume = await volumeLoader.createAndCacheVolume(volumeId, {
+        imageIds,
+      });
+
+      // Add some segmentations based on the source data volume
+      // await addSegmentationsToState();
+
+      volume.load();
+
+      // Set volumes on the viewports
+      await setVolumesForViewports(
+          this.renderingEngine,
+          [{volumeId}],
+          [viewportId]
       );
 
-      const {setters, state} = cornerstoneTools.getModule(
-        "segmentation"
-      );
+      // // Add the segmentation representation to the toolgroup
+      // await segmentation.addSegmentationRepresentations(toolGroupId, [
+      //   {
+      //     segmentationId,
+      //     type: csToolsEnums.SegmentationRepresentations.Labelmap,
+      //   },
+      // ]);
+      // Render the image
+      this.renderingEngine.renderViewports([viewportId]);
 
-      setters.labelmap3DByFirstImageId(
-        imageIds_[0],
-        labelmapBufferArray[0],
-        0,
-        segMetadata,
-        imageIds_.length,
-        segmentsOnFrame
-      );
-      if (this.loading)
-        this.loading = false
     },
+
+    async load_stack(imageIds) {
+      this.renderingEngine.setViewports([
+        {
+          viewportId: viewportId,
+          type: ViewportType.STACK,
+          element: this.$refs.canvas,
+          defaultOptions: {
+            orientation: Enums.OrientationAxis.AXIAL,
+          },
+        },
+      ]);
+
+      imageLoader.loadAndCacheImages(imageIds)
+      const viewport = this.renderingEngine.getViewport(viewportId);
+      await viewport.setStack(imageIds);
+
+      viewport.render()
+    },
+
     async load_data() {
-      if (!this.loading)
-        this.loading = true
-
-      const seriesMetaData = await loadSeriesMetaData(
-        this.studyInstanceUID,
-        this.seriesInstanceUID
-      )
-      const isSegmentation = seriesMetaData.modality === 'SEG'
-      let imageMetaData = seriesMetaData
-      if (isSegmentation) {
-        // selected item is a segmentation object
-        imageMetaData = await loadSeriesMetaData(
-          seriesMetaData.studyInstanceUID,
-          seriesMetaData.referenceSeriesInstanceUID
-        )
+      // Get Cornerstone imageIds for the source data and fetch metadata into RAM
+      const imageIds = await createImageIdsAndCacheMetaData({
+        StudyInstanceUID: this.studyInstanceUID,
+        SeriesInstanceUID: this.seriesInstanceUID,
+        wadoRsRoot: process.env.VUE_APP_RS_ENDPOINT,
+      });
+      if (this.renderingEngine !== null) {
+        this.renderingEngine.destroy()
       }
 
-      const imageIds = imageMetaData.imageIds
+      this.renderingEngine = new RenderingEngine(renderingEngineId);
 
-      const stack = {
-        currentImageIdIndex: Math.floor(imageIds.length / 2),
-        imageIds
-      }
+      addTool(ZoomTool);
+      addTool(StackScrollMouseWheelTool);
+      addTool(WindowLevelTool);
+      addTool(SegmentationDisplayTool);
 
-      const image = await cornerstone.loadAndCacheImage(imageIds[stack.currentImageIdIndex])
+      const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
 
-      const viewport = cornerstone.getDefaultViewportForImage(
-        this.canvas,
-        image
-      );
-      cornerstone.displayImage(this.canvas, image, viewport);
-      cornerstoneTools.addStackStateManager(this.canvas, ['stack'])
-      cornerstoneTools.addToolState(this.canvas, 'stack', stack)
+      // Add tools to the ToolGroup
+      toolGroup.addTool(ZoomTool.toolName);
+      toolGroup.addTool(StackScrollMouseWheelTool.toolName);
+      toolGroup.addTool(WindowLevelTool.toolName);
+      // toolGroup.addTool(SegmentationDisplayTool.toolName);
 
-      const imagePromises = imageIds.map(imageId => {
-        return cornerstone.loadAndCacheImage(imageId);
+      toolGroup.addViewport(viewportId, renderingEngineId);
+
+      toolGroup.setToolActive(StackScrollMouseWheelTool.toolName);
+
+      toolGroup.setToolActive(WindowLevelTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Primary, // Left Click
+          },
+        ],
       });
 
-      Promise.all(imagePromises).then(() => {
-        if (!isSegmentation)
-          if (this.loading) {
-            this.loading = false
-            console.log('loading set to false')
-          }
+      toolGroup.setToolActive(ZoomTool.toolName, {
+        bindings: [
+          {
+            mouseButton: MouseBindings.Secondary, // Right Click
+          },
+        ],
       });
+      // toolGroup.setToolEnabled(SegmentationDisplayTool.toolName);
 
-      if (isSegmentation) {
-        this.load_segmentations(seriesMetaData);
+      try {
+        console.log('rendering volume')
+        await this.load_volume(imageIds)
+      } catch (e) {
+        console.log(e)
+        await this.load_stack(imageIds)
+        console.log('rendering stack')
       }
-      cornerstoneTools.addTool(cornerstoneTools.StackScrollMouseWheelTool)
-      cornerstoneTools.addTool(cornerstoneTools.ZoomTool)
-      cornerstoneTools.addTool(cornerstoneTools.WwwcTool)
-
-      cornerstoneTools.setToolActive('StackScrollMouseWheel', {})
-      cornerstoneTools.setToolActive("Zoom", {mouseButtonMask: 2}); // Right
-      cornerstoneTools.setToolActive("Wwwc", {mouseButtonMask: 1}); // Left & Touch
     }
   },
   updated() {
   },
   created() {
-
   },
   async mounted() {
-    if (!this.loading)
-      this.loading = true
-    console.log('cornerstone mounted')
-    cornerstoneTools.init({
-      globalToolSyncEnabled: true
+    this.renderingEngine = new RenderingEngine(renderingEngineId);
+
+    addTool(ZoomTool);
+    addTool(StackScrollMouseWheelTool);
+    addTool(WindowLevelTool);
+    addTool(SegmentationDisplayTool);
+
+    const toolGroup = ToolGroupManager.createToolGroup(toolGroupId);
+
+    // Add tools to the ToolGroup
+    toolGroup.addTool(ZoomTool.toolName);
+    toolGroup.addTool(StackScrollMouseWheelTool.toolName);
+    toolGroup.addTool(WindowLevelTool.toolName);
+    // toolGroup.addTool(SegmentationDisplayTool.toolName);
+
+    toolGroup.addViewport(viewportId, renderingEngineId);
+
+    toolGroup.setToolActive(StackScrollMouseWheelTool.toolName);
+
+    toolGroup.setToolActive(WindowLevelTool.toolName, {
+      bindings: [
+        {
+          mouseButton: MouseBindings.Primary, // Left Click
+        },
+      ],
     });
-    // Enable Canvas
-    this.canvas = this.$refs.canvas;
-    cornerstone.enable(this.canvas, {
-      renderer: "webgl"
+
+    toolGroup.setToolActive(ZoomTool.toolName, {
+      bindings: [
+        {
+          mouseButton: MouseBindings.Secondary, // Right Click
+        },
+      ],
     });
+    // toolGroup.setToolEnabled(SegmentationDisplayTool.toolName);
+
     this.load_data();
   },
   watch: {
     seriesInstanceUID() {
-      console.log('watch seriesInstanceUID')
       this.load_data();
     },
     loading() {
