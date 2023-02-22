@@ -27,14 +27,16 @@
     base_image_url: "{{ base_image_url }}"
     base_image_sha: "{{ base_image_sha }}"
     libvirt_pool_dir: "{{ libvirt_pool_dir | default('/var/lib/libvirt/images') }}"
-    vm_config_filepath: "{{ vm_config_filepath }}"
+    vm_config_filename: "{{ vm_config_filename }}"
+    vm_config_filepath: "{{ vm_config_path }}/{{ vm_config_filename }}"
+    vm_config_container_filepath: "{{ vm_config_container_path }}/{{ vm_config_filename }}"
     vm_name: "{{ instance_name | default('test-isolated-environment') }}"
     vm_vcpus: "{{ vm_vcpus | default('2') }}"
     vm_ram_mb: "{{ vm_ram_mb | default('8192') }}"
-    vm_net: "{{ vm_net | default('default') }}"
     vm_root_pass: "{{ vm_root_pass }}"
-    ssh_key: "{{ ssh_key_path }}/{{ ssh_key_name }}"
-    ssh_pub_key: "{{ ssh_key }}.pub"
+    ssh_key_local_path: "{{ ssh_key_container_path }}"
+    ssh_key_remote_path: "{{ ssh_key_path }}"
+    ssh_pub_key: "{{ ssh_key_name }}.pub"
     cleanup_download: "{{ cleanup_download | default('no') }}"
     cleanup_libvirt: "{{ cleanup_libvirt | default('no') }}"
     instance_state: "{{ instance_state | default('present') }}"
@@ -109,17 +111,18 @@
         command: |
           virt-customize -a {{ libvirt_img_filepath }} \
           --hostname {{ vm_name }} \
-          --ssh-inject 'root:file:{{ ssh_pub_key }}' \
+          --ssh-inject 'root:file:{{ ssh_key_remote_path }}/{{ ssh_key_name }}.pub' \
           --uninstall cloud-init \
           --selinux-relabel
-        when: copy_results is changed and selinux_enabled_os
+        when: copy_results is changed and selinux_enabled_os|bool
 
       - name: Configure the image
         become: yes
         command: |
           virt-customize -a {{ libvirt_img_filepath }} \
           --hostname {{ vm_name }} \
-        when: copy_results is changed and not selinux_enabled_os
+          --ssh-inject 'root:file:{{ ssh_key_remote_path }}/{{ ssh_key_name }}.pub'
+        when: copy_results is changed and not selinux_enabled_os|bool
       
       - name: Define VM
         become: yes
@@ -139,11 +142,12 @@
 
       - name: Waiting for VM to be ready so that IP address can be extracted
         wait_for:
-          timeout: 10
+          timeout: 20
 
       - name: Extract VM's IP address
         become: yes
-        shell: virsh net-dhcp-leases default
+        # shell: virsh net-dhcp-leases hostroutednet
+        shell: virsh domifaddr {{ vm_name }} --source arp
         register: results
       - set_fact:
           vm_ip: "{{ results.stdout | regex_search(regexp) }}"
@@ -158,7 +162,7 @@
 
       - name: Wait for SSH on the Instance
         become: yes
-        command: "ssh -oBatchMode=yes -oStrictHostKeyChecking=no -i {{ ssh_key }} root@{{ vm_ip }} true"
+        command: "ssh -oBatchMode=yes -oStrictHostKeyChecking=no -i {{ ssh_key_remote_path }}/{{ ssh_key_name }} root@{{ vm_ip }} true"
         register: result
         until: result.rc == 0
         retries: 6

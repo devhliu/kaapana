@@ -22,7 +22,6 @@ class LocalTrustedPreETLOperator(KaapanaPythonBaseOperator):
         return return_code
 
     def algo_pre_etl(self, config_params):
-        print(f"***************Config params are***************\n{config_params}")
         operator_dir = os.path.dirname(os.path.abspath(__file__))
         user_experiment_path = os.path.join(operator_dir, "algorithm_files", config_params["workflow_type"], config_params["experiment_name"])
         Path(user_experiment_path).mkdir(parents=True, exist_ok=True)

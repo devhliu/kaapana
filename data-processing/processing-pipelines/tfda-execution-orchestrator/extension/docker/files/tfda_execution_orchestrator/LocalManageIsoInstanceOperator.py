@@ -1,6 +1,4 @@
 import os
-import glob
-import zipfile
 import subprocess
 import re
 import logging
@@ -38,10 +36,12 @@ class LocalManageIsoInstanceOperator(KaapanaPythonBaseOperator):
         else:
             raise AirflowFailException(f"Sorry!! {platform_name.title()} is not yet supported. Please choose a supported platform...")
         
-        # print(f"*****************************The EXTRA-VARS are: {playbook_args}************************************")
         if platform_name in "qemu_kvm":
             vault_text_file = platform_config["platforms"][platform_name]["platform_flavors"][flavor_name]["vault_text_file"]
             vault_filepath = os.path.join(playbooks_dir, vault_text_file)
+            vm_config_container_path = os.path.join(operator_dir, "KVM_config_files")
+            ssh_key_container_path = "/root/.ssh"
+            playbook_args += f" vm_config_container_path={vm_config_container_path} ssh_key_container_path={ssh_key_container_path}"
             if not os.path.isfile(vault_filepath):
                 raise AirflowFailException(f"Vault file {vault_filepath} for password not found in playbooks directory, please create it first!")
             command = ["ansible-playbook", f"--vault-password-file={vault_filepath}", playbook_path, "--extra-vars", playbook_args]
