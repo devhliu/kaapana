@@ -64,7 +64,7 @@ v-dialog(v-model='dialogOpen' max-width='600px')
               v-select(v-model='bucket_id' :items='final_available_datasets' label='Choose Dataset' chips='')
               v-text-field(v-model='container_registry_url' label='Enter container registry URL' required='')
               v-text-field(v-model='container_registry_user' label='Enter container registry username' required='')
-              v-text-field(v-model='container_registry_pwd' label='Enter container registry password' required='')
+              v-text-field(v-model='container_registry_pwd' label='Enter container registry password' type='password' required='')
               v-text-field(v-model='container_name_version' label='Enter container name:version' required='')
              
             v-col(v-if="instance_names.length && workflow_type!=='shell_workflow' && workflow_type!=='container_workflow' " cols='12')
