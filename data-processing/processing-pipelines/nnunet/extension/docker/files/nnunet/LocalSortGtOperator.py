@@ -1,23 +1,21 @@
-import os
 from os.path import join, exists, basename, dirname
-from glob import glob
-import json
-import shutil
-import pydicom
-from pydicom.uid import generate_uid
+from os.path import join, exists, basename, dirname
 from pathlib import Path
-from shutil import copy2, move, rmtree
+from shutil import move, rmtree
 
-from kaapana.operators.KaapanaPythonBaseOperator import KaapanaPythonBaseOperator
+import pydicom
 from kaapana.blueprints.kaapana_global_variables import WORKFLOW_DIR
+from kaapana.operators.KaapanaPythonBaseOperator import \
+    KaapanaPythonBaseOperator
+
 
 class LocalSortGtOperator(KaapanaPythonBaseOperator):
     def start(self, ds, **kwargs):
         print("Starting LocalSortGtOperator ...")
         print(kwargs)
 
-        run_dir = join(WORKFLOW_DIR, kwargs['dag_run'].run_id)
-        batch_dirs = [f for f in glob(join(run_dir, self.batch_name, '*'))]
+        run_dir = join(WORKFLOW_DIR, kwargs["dag_run"].run_id)
+        batch_dirs = [f for f in glob(join(run_dir, self.batch_name, "*"))]
 
         print(f"# Found {len(batch_dirs)} batch elements...")
         base_images_list = {}
@@ -30,9 +28,15 @@ class LocalSortGtOperator(KaapanaPythonBaseOperator):
                 incoming_dcm = pydicom.dcmread(seg_dicom_path)
                 if (0x0008, 0x1115) in incoming_dcm:
                     ref_series_items = incoming_dcm[0x0008, 0x1115].value
-                if (0x3006,0x0010) in incoming_dcm and (0x3006,0x0012) in incoming_dcm[0x3006,0x0010].value[0] and (0x3006,0x0014) in incoming_dcm[0x3006,0x0010].value[0][0x3006,0x0012].value[0]:
-                    ref_series_items = incoming_dcm[0x3006,0x0010].value[0][0x3006,0x0012].value[0][0x3006,0x0014].value
-                
+                if (
+                    (0x3006, 0x0010) in incoming_dcm
+                    and (0x3006, 0x0012) in incoming_dcm[0x3006, 0x0010].value[0]
+                    and (0x3006, 0x0014) in incoming_dcm[0x3006, 0x0010].value[0][0x3006, 0x0012].value[0]
+                ):
+                    ref_series_items = (
+                        incoming_dcm[0x3006, 0x0010].value[0][0x3006, 0x0012].value[0][0x3006, 0x0014].value
+                    )
+
                 assert ref_series_items is not None
 
                 for ref_series in ref_series_items:
@@ -45,54 +49,42 @@ class LocalSortGtOperator(KaapanaPythonBaseOperator):
                     else:
                         print(f"#### base_image: {ref_ct_id} already exists in list ...")
                     base_images_list[ref_ct_id].append(seg_dicom_path)
-        
-        for base_image,corr_batch_elements in base_images_list.items():
+
+        for base_image, corr_batch_elements in base_images_list.items():
             print(f"# Found base_image with {len(corr_batch_elements)} corresponding segmentation...")
             assert len(corr_batch_elements) != 0
-            
+
             if len(corr_batch_elements) == 1:
                 corr_seg_file = corr_batch_elements[0]
                 org_input_dir = dirname(corr_seg_file)
-                new_batch_element_name = join(run_dir, self.batch_name,base_image,self.operator_in_dir)
+                new_batch_element_name = join(run_dir, self.batch_name, base_image, self.operator_in_dir)
 
                 print(f"# Only one corresponding image -> change batch_element name to base_id ..")
                 print(f"# {org_input_dir} -> {new_batch_element_name}")
-                move(org_input_dir,new_batch_element_name)
+                move(org_input_dir, new_batch_element_name)
                 print(f"#")
                 print(f"#")
             else:
                 print(f"# Merging started...")
-                target_series_batch = join(run_dir, self.batch_name,f"{base_image}_merged",self.operator_in_dir)
+                target_series_batch = join(run_dir, self.batch_name, f"{base_image}_merged", self.operator_in_dir)
                 Path(target_series_batch).mkdir(parents=True, exist_ok=True)
                 for corr_image in corr_batch_elements:
-                    target_seg_path = join(target_series_batch,basename(corr_image))
+                    target_seg_path = join(target_series_batch, basename(corr_image))
                     print(f"# copy {corr_image} -> {target_seg_path}")
                     assert not exists(target_seg_path)
-                    move(src=corr_image,dst=target_seg_path)
+                    move(src=corr_image, dst=target_seg_path)
             print(f"#")
-        
+
         print(f"# Merging done.")
         print(f"#")
-                
-        for base_image,corr_batch_elements in base_images_list.items():
+
+        for base_image, corr_batch_elements in base_images_list.items():
             for corr_image in corr_batch_elements:
                 org_batch_element_dir = dirname(dirname(corr_image))
                 print(f"# Removing outdated batch-dir: {org_batch_element_dir}")
-                rmtree(path=org_batch_element_dir,ignore_errors=True)
+                rmtree(path=org_batch_element_dir, ignore_errors=True)
                 print(f"# ")
         print(f"# Done.")
 
-
-
-
-    def __init__(self,
-                 dag,
-                 name='sort-gt',
-                 **kwargs):
-
-        super().__init__(
-            dag=dag,
-            name=name,
-            python_callable=self.start,
-            **kwargs
-        )
+    def __init__(self, dag, name="sort-gt", **kwargs):
+        super().__init__(dag=dag, name=name, python_callable=self.start, **kwargs)

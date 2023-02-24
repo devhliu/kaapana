@@ -1,6 +1,5 @@
 import time
-import requests
-import pytest
+
 from tests.util import get_extensions, install_nnunet, delete_nnunet
 
 
@@ -20,31 +19,18 @@ def test_nnunet_pending():
     if len(nnunet["available_versions"]["03-22"]["deployments"]) > 0:
         print("########## nnunet already installed")
         delete_nnunet()
-        installed = check_nnunet_installed(
-            return_on_install=False,
-            interval=2,
-            iterations=15
-        )
+        installed = check_nnunet_installed(return_on_install=False, interval=2, iterations=15)
 
     # install
     install_nnunet()
-    installed = check_nnunet_installed(
-        return_on_install=True,
-        interval=2,
-        iterations=15
-    )
+    installed = check_nnunet_installed(return_on_install=True, interval=2, iterations=15)
     if installed:
         print("########## uninstalling nnunet before finish...")
         delete_nnunet()
 
 
-def check_nnunet_installed(
-    return_on_install: bool = True,
-    interval: int = 2,
-    iterations: int = 15
-):
-    print("checking if nnunet is installed every {0} seconds for {1} iterations".format(
-        interval, iterations))
+def check_nnunet_installed(return_on_install: bool = True, interval: int = 2, iterations: int = 15):
+    print("checking if nnunet is installed every {0} seconds for {1} iterations".format(interval, iterations))
 
     for i in range(0, iterations):
         time.sleep(interval)
@@ -66,6 +52,4 @@ def check_nnunet_installed(
             print("nnunet is not installed")
             if not return_on_install:
                 return False
-    raise AssertionError("check_nnunet_installed returned None, return_on_install={0}".format(
-        return_on_install
-    ))
+    raise AssertionError("check_nnunet_installed returned None, return_on_install={0}".format(return_on_install))

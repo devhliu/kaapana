@@ -1,44 +1,45 @@
-from kaapana.operators.KaapanaPythonBaseOperator import KaapanaPythonBaseOperator
-from kaapana.blueprints.kaapana_global_variables import BATCH_NAME, WORKFLOW_DIR
-from airflow.api.common.trigger_dag import trigger_dag as trigger
-from kaapana.blueprints.kaapana_utils import generate_run_id
-from airflow.models import DagBag
-from glob import glob
-from os.path import join, exists, basename, dirname, realpath
-import os
 import json
+import os
 import shutil
+from glob import glob
+from os.path import join, exists
+
 import pydicom
-from pathlib import Path
+from airflow.api.common.trigger_dag import trigger_dag as trigger
+from airflow.models import DagBag
+from kaapana.blueprints.kaapana_global_variables import WORKFLOW_DIR
+from kaapana.blueprints.kaapana_utils import generate_run_id
+from kaapana.operators.KaapanaPythonBaseOperator import \
+    KaapanaPythonBaseOperator
 
 
 class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
     """
-        Operator to trigger workflows from within a workflow.
-        To automatically trigger workflows configuration JSON files with the name */*trigger_rule.json* are needed.
-        The operator search for all files with this extension in the dags folder.
+     Operator to trigger workflows from within a workflow.
+     To automatically trigger workflows configuration JSON files with the name */*trigger_rule.json* are needed.
+     The operator search for all files with this extension in the dags folder.
 
-        **Inputs:**
+     **Inputs:**
 
-        JSON file example:
-       [
-          {
-             "search_tags": {
-                "0x0008,0x0060": "SEG"
-             },
-             "dag_ids": {
-                   <dag id to trigger>: {
-                      "fetch_method": "copy",
-                      "single_execution" : false
-                   }
-             }
+     JSON file example:
+    [
+       {
+          "search_tags": {
+             "0x0008,0x0060": "SEG"
+          },
+          "dag_ids": {
+                <dag id to trigger>: {
+                   "fetch_method": "copy",
+                   "single_execution" : false
+                }
           }
-       ]
+       }
+    ]
 
-        **Outputs:**
+     **Outputs:**
 
-        * all workflows with predefined trigger rules are triggered
-        """
+     * all workflows with predefined trigger rules are triggered
+    """
 
     def trigger_it(self, triggering):
         dag_id = triggering["dag_id"]
@@ -75,12 +76,7 @@ class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
             print(f"# Using PACS fetch-method !")
 
             if "data_form" not in conf or "cohort_identifiers" not in conf["data_form"]:
-                conf["data_form"] =  {
-                    "cohort_identifiers": [],
-                    "cohort_query": {
-                        'index': 'meta-index'
-                    }
-                }
+                conf["data_form"] = {"cohort_identifiers": [], "cohort_query": {"index": "meta-index"}}
             conf["data_form"]["cohort_identifiers"].append(series_uid)
 
         return conf
@@ -100,7 +96,7 @@ class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
         print(f"# Found {len(trigger_rule_list)} auto-trigger configurations -> start processing ...")
         print("# ")
 
-        batch_folders = sorted([f for f in glob(join(WORKFLOW_DIR, kwargs['dag_run'].run_id, "batch", '*'))])
+        batch_folders = sorted([f for f in glob(join(WORKFLOW_DIR, kwargs["dag_run"].run_id, "batch", "*"))])
         triggering_list = []
         for batch_element_dir in batch_folders:
             print("#")
@@ -121,7 +117,9 @@ class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
             print(f"# Found {len(input_files)} input-files!")
 
             incoming_dcm = pydicom.dcmread(input_files[0])
-            dcm_dataset = str(incoming_dcm[0x0012, 0x0020].value).lower() if (0x0012, 0x0020) in incoming_dcm else "N/A"
+            dcm_dataset = (
+                str(incoming_dcm[0x0012, 0x0020].value).lower() if (0x0012, 0x0020) in incoming_dcm else "N/A"
+            )
             series_uid = str(incoming_dcm[0x0020, 0x000E].value)
 
             print("#")
@@ -132,14 +130,21 @@ class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
             for config_entry in trigger_rule_list:
                 fullfills_all_search_tags = True
                 for search_key, search_value in config_entry["search_tags"].items():
-                    dicom_tag = search_key.split(',')
-                    if (dicom_tag in incoming_dcm) and (str(incoming_dcm[dicom_tag].value).lower() == search_value.lower()):
+                    dicom_tag = search_key.split(",")
+                    if (dicom_tag in incoming_dcm) and (
+                        str(incoming_dcm[dicom_tag].value).lower() == search_value.lower()
+                    ):
                         print(f"Filtering for {incoming_dcm[dicom_tag]}")
                     else:
                         fullfills_all_search_tags = False
                 if fullfills_all_search_tags is True:
-                    for dag_id, conf, in config_entry["dag_ids"].items():
-                        if dag_id == "service-extract-metadata" or (dcm_dataset != "dicom-test" and dcm_dataset != "phantom-example"):
+                    for (
+                        dag_id,
+                        conf,
+                    ) in config_entry["dag_ids"].items():
+                        if dag_id == "service-extract-metadata" or (
+                            dcm_dataset != "dicom-test" and dcm_dataset != "phantom-example"
+                        ):
                             print(f"# Triggering '{dag_id}'")
                             single_execution = False
                             if "single_execution" in conf and conf["single_execution"]:
@@ -157,33 +162,23 @@ class LocalAutoTriggerOperator(KaapanaPythonBaseOperator):
                                         break
                                 if not dag_run_id:
                                     dag_run_id = generate_run_id(dag_id)
-                            conf = self.set_data_input(dag_id=dag_id,
-                                                       dcm_path=element_input_dir,
-                                                       dag_run_id=dag_run_id,
-                                                       series_uid=series_uid,
-                                                       conf=conf)
+                            conf = self.set_data_input(
+                                dag_id=dag_id,
+                                dcm_path=element_input_dir,
+                                dag_run_id=dag_run_id,
+                                series_uid=series_uid,
+                                conf=conf,
+                            )
                             if not single_execution:
                                 for i in range(len(triggering_list)):
-                                    if triggering_list[i]['dag_id'] == dag_id:
+                                    if triggering_list[i]["dag_id"] == dag_id:
                                         del triggering_list[i]
                                         break
 
-                            triggering_list.append({
-                                "dag_id": dag_id,
-                                "conf": conf,
-                                "dag_run_id": dag_run_id
-                            })
+                            triggering_list.append({"dag_id": dag_id, "conf": conf, "dag_run_id": dag_run_id})
 
         for triggering in triggering_list:
             self.trigger_it(triggering)
 
-    def __init__(self,
-                 dag,
-                 **kwargs):
-
-        super().__init__(
-            dag=dag,
-            name="auto-dag-trigger",
-            python_callable=self.start,
-            **kwargs
-        )
+    def __init__(self, dag, **kwargs):
+        super().__init__(dag=dag, name="auto-dag-trigger", python_callable=self.start, **kwargs)

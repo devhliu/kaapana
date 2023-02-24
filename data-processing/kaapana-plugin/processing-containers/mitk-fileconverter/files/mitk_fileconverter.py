@@ -1,14 +1,14 @@
-from os import getenv
-from os.path import join, exists, dirname, basename
 from glob import glob
-import pydicom
-from pathlib import Path
-
 # For multiprocessing -> usually you should scale via multiple containers!
 from multiprocessing.pool import ThreadPool
-
+from os import getenv
+from os.path import join, exists, dirname, basename
+from pathlib import Path
 # For shell-execution
 from subprocess import PIPE, run
+
+import pydicom
+
 execution_timeout = 1200
 
 # Counter to check if smth has been processed
@@ -129,7 +129,7 @@ print("#")
 
 # Loop for every batch-element (usually series)
 job_list = []
-batch_folders = sorted([f for f in glob(join('/', workflow_dir, batch_name, '*'))])
+batch_folders = sorted([f for f in glob(join("/", workflow_dir, batch_name, "*"))])
 for batch_element_dir in batch_folders:
     element_input_dir = join(batch_element_dir, operator_in_dir)
     element_output_dir = join(batch_element_dir, operator_out_dir)
@@ -191,8 +191,8 @@ if processed_count == 0:
     print("##################################################")
     print("#")
 
-    batch_input_dir = join('/', workflow_dir, operator_in_dir)
-    batch_output_dir = join('/', workflow_dir, operator_in_dir)
+    batch_input_dir = join("/", workflow_dir, operator_in_dir)
+    batch_output_dir = join("/", workflow_dir, operator_in_dir)
 
     # check if input dir present
     if not exists(batch_input_dir):

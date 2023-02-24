@@ -42,8 +42,7 @@ class VolumeMount:
         self.mount_propagation = mount_propagation
 
     def get_kube_object(self):
-        kube_volume_mount = kubernetes.client.V1VolumeMount(
-            mount_path=self.mount_path, name=self.name)
+        kube_volume_mount = kubernetes.client.V1VolumeMount(mount_path=self.mount_path, name=self.name)
 
         kube_volume_mount.sub_path = self.sub_path
         kube_volume_mount.read_only = self.read_only

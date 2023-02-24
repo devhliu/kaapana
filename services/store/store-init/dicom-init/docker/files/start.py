@@ -1,13 +1,12 @@
+import glob
+import json
 import os
 import shutil
+import time
+from subprocess import PIPE, run
+
 import pydicom
 import requests
-import time
-import glob
-import subprocess
-import json
-from zipfile import ZipFile
-from subprocess import PIPE, run
 from opensearchpy import OpenSearch
 
 tmp_data_dir = "/slow_data_dir/TMP"
@@ -30,7 +29,7 @@ auth = None
 # auth = ('admin', 'admin') # For testing only. Don't store credentials in code.
 
 os_client = OpenSearch(
-    hosts=[{'host': os_host, 'port': os_port}],
+    hosts=[{"host": os_host, "port": os_port}],
     http_compress=True,  # enables gzip compression for request bodies
     http_auth=auth,
     # client_cert = client_cert_path,
@@ -73,8 +72,19 @@ def send_file():
                     print("dcm-file: {}".format(dcm_file))
                     dataset = pydicom.dcmread(dcm_file)[0x0012, 0x0020].value
 
-                    command = ["dcmsend", "+sd", "+r", "-v", ctp_url, dcm_port, "-aet", "re-index", "-aec", dataset,
-                               dcm_dir]
+                    command = [
+                        "dcmsend",
+                        "+sd",
+                        "+r",
+                        "-v",
+                        ctp_url,
+                        dcm_port,
+                        "-aet",
+                        "re-index",
+                        "-aec",
+                        dataset,
+                        dcm_dir,
+                    ]
                     # output = run(command)
                     output = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
                     if output.returncode == 0:
@@ -84,10 +94,12 @@ def send_file():
                     else:
                         print("error sending img: {}!".format(dcm_dir))
                         print(
-                            "############################################################################################################## STDOUT:")
+                            "############################################################################################################## STDOUT:"
+                        )
                         print(output.stdout)
                         print(
-                            "############################################################################################################## STDERR:")
+                            "############################################################################################################## STDERR:"
+                        )
                         print(output.stderr)
                         raise
                 except Exception as e:
@@ -106,13 +118,26 @@ def send_file():
 
         print("Sent dicoms: {}".format(files_sent))
 
+
 # first file will init meta
 
 
 def send_meta_init():
     print("Send Dicom init meta image....")
     print("")
-    command = ["dcmsend", "+sd", "+r", "-v", ctp_url, dcm_port, "-aet", "dicom-test", "-aec", "dicom-test", "/dicom_test_data/init_data"]
+    command = [
+        "dcmsend",
+        "+sd",
+        "+r",
+        "-v",
+        ctp_url,
+        dcm_port,
+        "-aet",
+        "dicom-test",
+        "-aec",
+        "dicom-test",
+        "/dicom_test_data/init_data",
+    ]
     output = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if output.returncode == 0:
         print("############################ Push init meta dicom -> success")
@@ -120,19 +145,21 @@ def send_meta_init():
         examples_send = []
         for examples in example_file_list:
             item = dict()
-            item['study_uid'] = pydicom.dcmread(examples)[0x0020, 0x000D].value
-            item['series_uid'] = pydicom.dcmread(examples)[0x0020, 0x000E].value
-            item['instance_uid'] = pydicom.dcmread(examples)[0x0008, 0x0018].value
-            item['modality'] = pydicom.dcmread(examples)[0x0008, 0x0060].value
+            item["study_uid"] = pydicom.dcmread(examples)[0x0020, 0x000D].value
+            item["series_uid"] = pydicom.dcmread(examples)[0x0020, 0x000E].value
+            item["instance_uid"] = pydicom.dcmread(examples)[0x0008, 0x0018].value
+            item["modality"] = pydicom.dcmread(examples)[0x0008, 0x0060].value
             examples_send.append(item)
         return examples_send
     else:
         print("error sending example dicom!")
         print(
-            "############################################################################################################## STDOUT:")
+            "############################################################################################################## STDOUT:"
+        )
         print(output.stdout)
         print(
-            "############################################################################################################## STDERR:")
+            "############################################################################################################## STDERR:"
+        )
         print(output.stderr)
         exit(1)
 
@@ -144,7 +171,10 @@ def check_file_on_platform(examples_send):
         quido_success = False
         while counter < max_counter:
             # quido file
-            r = requests.get(f"{dcm4chee_host}/dcm4chee-arc/aets/{aet}/rs/studies/{file['study_uid']}/series/{file['series_uid']}/instances", verify=False)
+            r = requests.get(
+                f"{dcm4chee_host}/dcm4chee-arc/aets/{aet}/rs/studies/{file['study_uid']}/series/{file['series_uid']}/instances",
+                verify=False,
+            )
             if r.status_code != requests.codes.ok:
                 counter += 1
                 time.sleep(10)
@@ -164,15 +194,22 @@ def check_file_on_platform(examples_send):
                 print(f"# counter {counter} > max_counter {max_counter} !")
                 exit(1)
 
-
             queryDict = {}
-            queryDict["query"] = {'bool': {
-                'must':
-                    [
-                        {'match_all': {}},
-                        {'match_phrase': {
-                            '0020000E SeriesInstanceUID_keyword.keyword': {'query': file['series_uid']}}},
-                    ], 'filter': [], 'should': [], 'must_not': []}}
+            queryDict["query"] = {
+                "bool": {
+                    "must": [
+                        {"match_all": {}},
+                        {
+                            "match_phrase": {
+                                "0020000E SeriesInstanceUID_keyword.keyword": {"query": file["series_uid"]}
+                            }
+                        },
+                    ],
+                    "filter": [],
+                    "should": [],
+                    "must_not": [],
+                }
+            }
 
             queryDict["_source"] = {}
             try:
@@ -183,7 +220,7 @@ def check_file_on_platform(examples_send):
                 counter += 1
                 time.sleep(10)
 
-            hits = res['hits']['hits']
+            hits = res["hits"]["hits"]
             print(("GOT %s results, wait and retry!" % len(hits)))
             if len(hits) == 1:
                 meta_query_success = True
@@ -198,32 +235,21 @@ def check_file_on_platform(examples_send):
 
 def trigger_delete_dag(examples_send):
     for file in examples_send:
-
         headers = {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/json',
+            "Cache-Control": "no-cache",
+            "Content-Type": "application/json",
         }
 
         conf = {
-            "data_form": {
-                "cohort_identifiers": [
-                    file['series_uid']
-                ],
-                "cohort_query": {
-                    'index': 'meta-index'
-                }
-            },
-            "workflow_form": {
-                "delete_complete_study": False,
-                "single_execution": False
-            }
+            "data_form": {"cohort_identifiers": [file["series_uid"]], "cohort_query": {"index": "meta-index"}},
+            "workflow_form": {"delete_complete_study": False, "single_execution": False},
         }
         dag_id = "delete-series-from-platform"
         print("data", conf)
-        print("trigger url: ", '{}/{}'.format(airflow_host, dag_id))
+        print("trigger url: ", "{}/{}".format(airflow_host, dag_id))
         dump = json.dumps(conf)
-        response = requests.post('{}/{}'.format(airflow_host, dag_id), headers=headers,data=dump, verify=False)
-        
+        response = requests.post("{}/{}".format(airflow_host, dag_id), headers=headers, data=dump, verify=False)
+
         if response.status_code == requests.codes.ok:
             print("Delete example dicom sucessful triggered")
         else:
@@ -234,17 +260,31 @@ def trigger_delete_dag(examples_send):
 def send_example():
     print("Unzipping example files")
     example_dir = "/dicom_test_data/phantom"
-    command = ["dcmsend", "+sd", "+r", "-v", ctp_url, dcm_port, "-aet", "phantom-example", "-aec", "phantom-example", example_dir]
+    command = [
+        "dcmsend",
+        "+sd",
+        "+r",
+        "-v",
+        ctp_url,
+        dcm_port,
+        "-aet",
+        "phantom-example",
+        "-aec",
+        "phantom-example",
+        example_dir,
+    ]
     output = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if output.returncode == 0:
         print("############################ success send example")
     else:
         print("error sending img: {}!".format(example_dir))
         print(
-            "############################################################################################################## STDOUT:")
+            "############################################################################################################## STDOUT:"
+        )
         print(output.stdout)
         print(
-            "############################################################################################################## STDERR:")
+            "############################################################################################################## STDERR:"
+        )
         print(output.stderr)
 
 
@@ -254,11 +294,12 @@ if __name__ == "__main__":
     init_meta_file = send_meta_init()
     check_file_on_platform(examples_send=init_meta_file)
     trigger_delete_dag(examples_send=init_meta_file)
-    send_file() ### This function does nothing, if tmp_data_dir is not an existing path
+    send_file()  ### This function does nothing, if tmp_data_dir is not an existing path
     send_example()
     example_phantom_send = [
-        {"study_uid": "1.3.12.2.1107.5.1.4.73104.30000020081307472119600000009",
-        "series_uid":"1.3.12.2.1107.5.1.4.73104.30000020081307523376400012735"}
-        ]
+        {
+            "study_uid": "1.3.12.2.1107.5.1.4.73104.30000020081307472119600000009",
+            "series_uid": "1.3.12.2.1107.5.1.4.73104.30000020081307523376400012735",
+        }
+    ]
     check_file_on_platform(examples_send=example_phantom_send)
-

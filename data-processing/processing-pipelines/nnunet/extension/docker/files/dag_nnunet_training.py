@@ -1,26 +1,29 @@
 import random
 from datetime import datetime, timedelta
 
-from kaapana.operators.LocalWorkflowCleanerOperator import LocalWorkflowCleanerOperator
-from kaapana.operators.LocalGetInputDataOperator import LocalGetInputDataOperator
-from kaapana.operators.LocalGetRefSeriesOperator import LocalGetRefSeriesOperator
+from airflow.api.common.experimental import pool as pool_api
+from airflow.models import DAG
+from airflow.utils.dates import days_ago
+from airflow.utils.trigger_rule import TriggerRule
+from kaapana.blueprints.kaapana_global_variables import INSTANCE_NAME, \
+    SERVICES_NAMESPACE
+from kaapana.operators.Bin2DcmOperator import Bin2DcmOperator
 from kaapana.operators.DcmConverterOperator import DcmConverterOperator
 from kaapana.operators.DcmSeg2ItkOperator import DcmSeg2ItkOperator
 from kaapana.operators.DcmSendOperator import DcmSendOperator
-from kaapana.operators.Bin2DcmOperator import Bin2DcmOperator
+from kaapana.operators.LocalGetInputDataOperator import \
+    LocalGetInputDataOperator
+from kaapana.operators.LocalGetRefSeriesOperator import \
+    LocalGetRefSeriesOperator
+from kaapana.operators.LocalMinioOperator import LocalMinioOperator
+from kaapana.operators.LocalWorkflowCleanerOperator import \
+    LocalWorkflowCleanerOperator
 from kaapana.operators.Pdf2DcmOperator import Pdf2DcmOperator
 from kaapana.operators.ZipUnzipOperator import ZipUnzipOperator
-from kaapana.operators.LocalMinioOperator import LocalMinioOperator
-from airflow.api.common.experimental import pool as pool_api
+
+from nnunet.NnUnetNotebookOperator import NnUnetNotebookOperator
 from nnunet.NnUnetOperator import NnUnetOperator
 from nnunet.SegCheckOperator import SegCheckOperator
-from nnunet.NnUnetNotebookOperator import NnUnetNotebookOperator
-from airflow.utils.dates import days_ago
-from airflow.models import DAG
-from airflow.utils.trigger_rule import TriggerRule
-from kaapana.blueprints.kaapana_global_variables import INSTANCE_NAME, SERVICES_NAMESPACE
-
-
 
 study_id = "Kaapana"
 TASK_NAME = f"Task{random.randint(100,999):03}_RACOON_{INSTANCE_NAME}_{datetime.now().strftime('%d%m%y-%H%M')}"
@@ -70,8 +73,8 @@ ui_forms = {
                 "type": "boolean",
                 "readOnly": True,
                 "required": True,
-            }
-        }
+            },
+        },
     },
     "workflow_form": {
         "type": "object",
@@ -81,13 +84,13 @@ ui_forms = {
                 "description": "Specify a name for the training task",
                 "type": "string",
                 "default": TASK_NAME,
-                "required": True
+                "required": True,
             },
             "experiment_name": {
                 "title": "Experiment name",
                 "description": "Specify a name for the training task",
                 "type": "string",
-                "required": False
+                "required": False,
             },
             "model": {
                 "title": "Network",
@@ -96,7 +99,7 @@ ui_forms = {
                 "enum": ["2d", "3d_lowres", "3d_fullres", "3d_cascade_fullres"],
                 "type": "string",
                 "readOnly": False,
-                "required": True
+                "required": True,
             },
             "train_network_trainer": {
                 "title": "Network-trainer",
@@ -124,7 +127,7 @@ ui_forms = {
                 "description": "Specify an ID for the node / site",
                 "type": "string",
                 "default": INSTANCE_NAME,
-                "required": True
+                "required": True,
             },
             "shuffle_seed": {
                 "title": "Shuffle seed",
@@ -160,7 +163,7 @@ ui_forms = {
                 "description": "Specify max epochs.",
                 "type": "integer",
                 "required": True,
-                "readOnly": False
+                "readOnly": False,
             },
             "num_batches_per_epoch": {
                 "title": "Batches per epoch",
@@ -168,7 +171,7 @@ ui_forms = {
                 "description": "Do only change if you know what you are doing!.",
                 "type": "integer",
                 "required": True,
-                "readOnly": False
+                "readOnly": False,
             },
             "num_val_batches_per_epoch": {
                 "title": "Validation batches per epoch",
@@ -176,25 +179,25 @@ ui_forms = {
                 "description": "Do only change if you know what you are doing!.",
                 "type": "integer",
                 "required": True,
-                "readOnly": False
+                "readOnly": False,
             },
             "fp32": {
                 "type": "boolean",
                 "title": "FP32",
                 "default": False,
-                "description": "Disable mixed precision training and run old school fp32"
+                "description": "Disable mixed precision training and run old school fp32",
             },
             "prep_preprocess": {
                 "type": "boolean",
                 "title": "Execute preprocessing",
                 "default": True,
-                "description": "Set this flag if you dont want to run the preprocessing. If this is set then this script will only run the experiment planning and create the plans file"
+                "description": "Set this flag if you dont want to run the preprocessing. If this is set then this script will only run the experiment planning and create the plans file",
             },
             "prep_check_integrity": {
                 "type": "boolean",
                 "title": "Check integrity",
                 "default": True,
-                "description": "Whether to check integrity of data"
+                "description": "Whether to check integrity of data",
             },
             # "version": {
             #     "title": "Version",
@@ -216,7 +219,7 @@ ui_forms = {
                 "description": "Expected input modality.",
                 "type": "string",
                 "readOnly": False,
-                "required": True
+                "required": True,
             },
             "single_execution": {
                 "type": "boolean",
@@ -224,41 +227,32 @@ ui_forms = {
                 "description": "Whether your report is execute in single mode or not",
                 "default": False,
                 "readOnly": True,
-                "required": True
-            }
-        }
-    }
+                "required": True,
+            },
+        },
+    },
 }
 args = {
-    'ui_visible': True,
-    'ui_federated': True,
-    'ui_forms': ui_forms,
-    'owner': 'kaapana',
-    'start_date': days_ago(0),
-    'retries': 0,
-    'retry_delay': timedelta(seconds=30)
+    "ui_visible": True,
+    "ui_federated": True,
+    "ui_forms": ui_forms,
+    "owner": "kaapana",
+    "start_date": days_ago(0),
+    "retries": 0,
+    "retry_delay": timedelta(seconds=30),
 }
 
 dag = DAG(
-    dag_id='nnunet-training',
+    dag_id="nnunet-training",
     default_args=args,
     concurrency=concurrency,
     max_active_runs=max_active_runs,
-    schedule_interval=None
+    schedule_interval=None,
 )
 
-get_input = LocalGetInputDataOperator(
-    dag=dag,
-    check_modality=True,
-    parallel_downloads=5
-)
+get_input = LocalGetInputDataOperator(dag=dag, check_modality=True, parallel_downloads=5)
 
-dcm2nifti_seg = DcmSeg2ItkOperator(
-    dag=dag,
-    input_operator=get_input,
-    output_format="nii.gz",
-    seg_filter=seg_filter
-)
+dcm2nifti_seg = DcmSeg2ItkOperator(dag=dag, input_operator=get_input, output_format="nii.gz", seg_filter=seg_filter)
 
 get_ref_ct_series_from_seg = LocalGetRefSeriesOperator(
     dag=dag,
@@ -266,14 +260,10 @@ get_ref_ct_series_from_seg = LocalGetRefSeriesOperator(
     search_policy="reference_uid",
     parallel_downloads=5,
     parallel_id="ct",
-    modality=None
+    modality=None,
 )
 
-dcm2nifti_ct = DcmConverterOperator(
-    dag=dag,
-    input_operator=get_ref_ct_series_from_seg,
-    output_format='nii.gz'
-)
+dcm2nifti_ct = DcmConverterOperator(dag=dag, input_operator=get_ref_ct_series_from_seg, output_format="nii.gz")
 
 check_seg = SegCheckOperator(
     dag=dag,
@@ -294,7 +284,7 @@ nnunet_preprocess = NnUnetOperator(
     prep_label_operators=[check_seg],
     prep_use_nifti_labels=False,
     prep_modalities=prep_modalities.split(","),
-    prep_processes_low=prep_threads+1,
+    prep_processes_low=prep_threads + 1,
     prep_processes_full=prep_threads,
     prep_preprocess=True,
     prep_check_integrity=True,
@@ -305,7 +295,7 @@ nnunet_preprocess = NnUnetOperator(
     allow_federated_learning=True,
     whitelist_federated_learning=["dataset_properties.pkl", "intensityproperties.pkl"],
     trigger_rule=TriggerRule.NONE_FAILED,
-    dev_server=None #'code-server'
+    dev_server=None,  #'code-server'
 )
 
 nnunet_train = NnUnetOperator(
@@ -316,51 +306,52 @@ nnunet_train = NnUnetOperator(
     model=default_model,
     allow_federated_learning=True,
     train_network_trainer=train_network_trainer,
-    train_fold='all',
+    train_fold="all",
     dev_server=None,
-    retries=0
+    retries=0,
 )
 
 generate_nnunet_report = NnUnetNotebookOperator(
     dag=dag,
-    name='generate-nnunet-report',
+    name="generate-nnunet-report",
     input_operator=nnunet_train,
-    arguments=["/app/notebooks/nnunet_training/run_generate_nnunet_report.sh"]
+    arguments=["/app/notebooks/nnunet_training/run_generate_nnunet_report.sh"],
 )
 
 put_to_minio = LocalMinioOperator(
     dag=dag,
-    name='upload-nnunet-data',
+    name="upload-nnunet-data",
     zip_files=True,
-    action='put',
+    action="put",
     action_operators=[nnunet_train, generate_nnunet_report],
-    file_white_tuples=('.zip')
-    )
+    file_white_tuples=(".zip"),
+)
 
-put_report_to_minio = LocalMinioOperator(dag=dag,
-    name='upload-staticwebsiteresults',
-    bucket_name='staticwebsiteresults',
-    action='put',
+put_report_to_minio = LocalMinioOperator(
+    dag=dag,
+    name="upload-staticwebsiteresults",
+    bucket_name="staticwebsiteresults",
+    action="put",
     action_operators=[generate_nnunet_report],
-    file_white_tuples=('.html', '.pdf')
-    )
+    file_white_tuples=(".html", ".pdf"),
+)
 
 pdf2dcm = Pdf2DcmOperator(
     dag=dag,
     input_operator=generate_nnunet_report,
     study_uid=training_results_study_uid,
     aetitle=ae_title,
-    pdf_title=f"Training Report nnUNet {TASK_NAME} {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    pdf_title=f"Training Report nnUNet {TASK_NAME} {datetime.now().strftime('%d.%m.%Y %H:%M')}",
 )
 
 dcmseg_send_pdf = DcmSendOperator(
     dag=dag,
     parallel_id="pdf",
     level="batch",
-    pacs_host=f'ctp-dicom-service.{SERVICES_NAMESPACE}.svc',
-    pacs_port='11112',
+    pacs_host=f"ctp-dicom-service.{SERVICES_NAMESPACE}.svc",
+    pacs_port="11112",
     ae_title=ae_title,
-    input_operator=pdf2dcm
+    input_operator=pdf2dcm,
 )
 
 zip_model = ZipUnzipOperator(
@@ -370,7 +361,7 @@ zip_model = ZipUnzipOperator(
     subdir="results/nnUNet",
     mode="zip",
     batch_level=True,
-    input_operator=nnunet_train
+    input_operator=nnunet_train,
 )
 
 bin2dcm = Bin2DcmOperator(
@@ -390,16 +381,16 @@ bin2dcm = Bin2DcmOperator(
     series_description=f"nnUNet model {datetime.now().strftime('%d.%m.%Y %H:%M')}",
     size_limit=dicom_model_slice_size_limit,
     input_operator=zip_model,
-    file_extensions="*.zip"
+    file_extensions="*.zip",
 )
 
 dcm_send_int = DcmSendOperator(
     dag=dag,
     level="batch",
-    pacs_host=f'ctp-dicom-service.{SERVICES_NAMESPACE}.svc',
-    pacs_port='11112',
+    pacs_host=f"ctp-dicom-service.{SERVICES_NAMESPACE}.svc",
+    pacs_port="11112",
     ae_title=ae_title,
-    input_operator=bin2dcm
+    input_operator=bin2dcm,
 )
 
 # dcm_send_ext = DcmSendOperator(

@@ -6,12 +6,7 @@ class GenerateThumbnailOperator(KaapanaBaseOperator):
     TODO!
     """
 
-    def __init__(self,
-                 dag,
-                 orig_image_operator,
-                 env_vars=None,
-                 **kwargs
-                 ):
+    def __init__(self, dag, orig_image_operator, env_vars=None, **kwargs):
         """
         :param target_filename: Only for packing. The created file.
         TODO
@@ -31,5 +26,5 @@ class GenerateThumbnailOperator(KaapanaBaseOperator):
             image=f"{default_registry}/seg-thumbnail-generator:{kaapana_build_version}",
             image_pull_secrets=["registry-secret"],
             env_vars=env_vars,
-            **kwargs
+            **kwargs,
         )

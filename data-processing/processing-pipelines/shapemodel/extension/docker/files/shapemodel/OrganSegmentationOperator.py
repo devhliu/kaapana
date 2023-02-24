@@ -21,16 +21,17 @@ class OrganSegmentationOperator(KaapanaBaseOperator):
 
     execution_timeout = timedelta(minutes=30)
 
-    def __init__(self,
-                 dag,
-                 mode: str,
-                 threads=8,
-                 env_vars=None,
-                 spleen_operator=None,
-                 parallel_id=None,
-                 execution_timeout=execution_timeout,
-                 **kwargs
-                 ):
+    def __init__(
+        self,
+        dag,
+        mode: str,
+        threads=8,
+        env_vars=None,
+        spleen_operator=None,
+        parallel_id=None,
+        execution_timeout=execution_timeout,
+        **kwargs,
+    ):
         """
         :param mode: Organ of interest. [unityCS, Liver, Spleen, RightKidney, LeftKidneyOnly]
         :param spleen_operator: Optional OrganSegmentationOperator with mode='spleen'
@@ -43,7 +44,7 @@ class OrganSegmentationOperator(KaapanaBaseOperator):
             "MODE": str(mode),
             "OMP_NUM_THREADS": str(threads),
             "OMP_THREAD_LIMIT": str(threads),
-            "SPLEEN_OPERATOR_DIR": spleen_operator.operator_out_dir if spleen_operator is not None else ''
+            "SPLEEN_OPERATOR_DIR": spleen_operator.operator_out_dir if spleen_operator is not None else "",
         }
 
         env_vars.update(envs)
@@ -61,5 +62,5 @@ class OrganSegmentationOperator(KaapanaBaseOperator):
             env_vars=env_vars,
             max_active_tis_per_dag=25,
             ram_mem_mb=6000,
-            **kwargs
-            )
+            **kwargs,
+        )

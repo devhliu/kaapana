@@ -17,14 +17,9 @@
 
 import kubernetes
 
+
 class Resources:
-    def __init__(
-            self,
-            request_memory=None,
-            request_cpu=None,
-            limit_memory=None,
-            limit_cpu=None,
-            limit_gpu=None):
+    def __init__(self, request_memory=None, request_cpu=None, limit_memory=None, limit_cpu=None, limit_gpu=None):
         self.request_memory = request_memory
         self.request_cpu = request_cpu
         self.limit_memory = limit_memory
@@ -46,20 +41,20 @@ class Resources:
             requests = {}
 
             if self.request_cpu is not None:
-                requests['cpu'] = self.request_cpu
+                requests["cpu"] = self.request_cpu
             if self.request_memory is not None:
-                requests['memory'] = self.request_memory
+                requests["memory"] = self.request_memory
             kube_resources.requests = requests
 
         if self.has_limits():
             limits = {}
 
             if self.limit_cpu is not None:
-                limits['cpu'] = self.limit_cpu
+                limits["cpu"] = self.limit_cpu
             if self.limit_memory is not None:
-                limits['memory'] = self.limit_memory
+                limits["memory"] = self.limit_memory
             if self.limit_gpu is not None:
-                limits['nvidia.com/gpu'] = self.limit_gpu
+                limits["nvidia.com/gpu"] = self.limit_gpu
             kube_resources.limits = limits
 
         return kube_resources

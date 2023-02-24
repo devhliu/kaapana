@@ -1,8 +1,6 @@
-from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.dates import days_ago
 from datetime import timedelta
 from airflow.models import DAG
-from datetime import datetime
 from nnunet.DiceEvaluationOperator import DiceEvaluationOperator
 from nnunet.LocalDataorganizerOperator import LocalDataorganizerOperator
 from nnunet.NnUnetOperator import NnUnetOperator
@@ -11,10 +9,29 @@ from kaapana.operators.LocalWorkflowCleanerOperator import LocalWorkflowCleanerO
 from nnunet.GetTaskModelOperator import GetTaskModelOperator
 from nnunet.LocalSortGtOperator import LocalSortGtOperator
 from kaapana.operators.Bin2DcmOperator import Bin2DcmOperator
-from kaapana.operators.DcmSeg2ItkOperator import DcmSeg2ItkOperator
 from kaapana.operators.LocalGetRefSeriesOperator import LocalGetRefSeriesOperator
 from kaapana.operators.LocalGetInputDataOperator import LocalGetInputDataOperator
 from kaapana.operators.DcmStruct2Nifti import DcmStruct2Nifti
+from nnunet.SegCheckOperator import SegCheckOperator
+from datetime import timedelta
+
+from airflow.models import DAG
+from airflow.utils.dates import days_ago
+from kaapana.operators.Bin2DcmOperator import Bin2DcmOperator
+from kaapana.operators.DcmConverterOperator import DcmConverterOperator
+from kaapana.operators.DcmStruct2Nifti import DcmStruct2Nifti
+from kaapana.operators.LocalGetInputDataOperator import \
+    LocalGetInputDataOperator
+from kaapana.operators.LocalGetRefSeriesOperator import \
+    LocalGetRefSeriesOperator
+from kaapana.operators.LocalWorkflowCleanerOperator import \
+    LocalWorkflowCleanerOperator
+
+from nnunet.DiceEvaluationOperator import DiceEvaluationOperator
+from nnunet.GetTaskModelOperator import GetTaskModelOperator
+from nnunet.LocalDataorganizerOperator import LocalDataorganizerOperator
+from nnunet.LocalSortGtOperator import LocalSortGtOperator
+from nnunet.NnUnetOperator import NnUnetOperator
 from nnunet.SegCheckOperator import SegCheckOperator
 
 default_interpolation_order = "default"
@@ -43,21 +60,21 @@ ui_forms = {
                 "enum": ["default", "0", "1", "2", "3"],
                 "type": "string",
                 "readOnly": False,
-                "required": True
+                "required": True,
             },
             "inf_threads_prep": {
                 "title": "Pre-processing threads",
                 "type": "integer",
                 "default": default_prep_thread_count,
                 "description": "Set pre-processing thread count.",
-                "required": True
+                "required": True,
             },
             "inf_threads_nifti": {
                 "title": "NIFTI threads",
                 "type": "integer",
                 "description": "Set NIFTI export thread count.",
                 "default": default_nifti_thread_count,
-                "required": True
+                "required": True,
             },
             "inf_seg_filter": {
                 "title": "SEG filter",
@@ -72,26 +89,22 @@ ui_forms = {
                 "type": "boolean",
                 "default": False,
                 "readOnly": False,
-            }
-        }
+            },
+        },
     }
 }
 
 args = {
-    'ui_visible': True,
-    'ui_forms': ui_forms,
-    'owner': 'kaapana',
-    'start_date': days_ago(0),
-    'retries': 0,
-    'retry_delay': timedelta(seconds=60)
+    "ui_visible": True,
+    "ui_forms": ui_forms,
+    "owner": "kaapana",
+    "start_date": days_ago(0),
+    "retries": 0,
+    "retry_delay": timedelta(seconds=60),
 }
 
 dag = DAG(
-    dag_id='nnunet-ensemble-rtstruct',
-    default_args=args,
-    concurrency=3,
-    max_active_runs=2,
-    schedule_interval=None
+    dag_id="nnunet-ensemble-rtstruct", default_args=args, concurrency=3, max_active_runs=2, schedule_interval=None
 )
 
 get_test_images = LocalGetInputDataOperator(
@@ -105,58 +118,38 @@ get_test_images = LocalGetInputDataOperator(
                 "query": {
                     "bool": {
                         "must": [
-                            {
-                                "match_all": {}
-                            },
-                            {
-                                "match_all": {}
-                            },
+                            {"match_all": {}},
+                            {"match_all": {}},
                             {
                                 "bool": {
                                     "minimum_should_match": 1,
                                     "should": [
-                                        {
-                                            "match_phrase": {
-                                                "00080060 Modality_keyword": "SEG"
-                                            }
-                                        },
-                                        {
-                                            "match_phrase": {
-                                                "00080060 Modality_keyword": "RTSTRUCT"
-                                            }
-                                        }
-                                    ]
+                                        {"match_phrase": {"00080060 Modality_keyword": "SEG"}},
+                                        {"match_phrase": {"00080060 Modality_keyword": "RTSTRUCT"}},
+                                    ],
                                 }
                             },
                             {
                                 "bool": {
                                     "should": [
-                                        {
-                                            "match_phrase": {
-                                                "rtstruct_organ_keyword.keyword": "Lung-Right"
-                                            }
-                                        },
-                                        {
-                                            "match_phrase": {
-                                                "rtstruct_organ_keyword.keyword": "Lung-Left"
-                                            }
-                                        }
+                                        {"match_phrase": {"rtstruct_organ_keyword.keyword": "Lung-Right"}},
+                                        {"match_phrase": {"rtstruct_organ_keyword.keyword": "Lung-Left"}},
                                     ],
-                                    "minimum_should_match": 1
+                                    "minimum_should_match": 1,
                                 }
-                            }
+                            },
                         ],
                         "filter": [],
                         "should": [],
-                        "must_not": []
+                        "must_not": [],
                     }
                 },
-                "index": "meta-index"
+                "index": "meta-index",
             }
         }
     ],
     parallel_downloads=5,
-    check_modality=False
+    check_modality=False,
 )
 
 # get_test_images = LocalGetRefSeriesOperator(
@@ -181,11 +174,7 @@ get_test_images = LocalGetInputDataOperator(
 #     delete_input_on_success=False
 # )
 
-sort_gt = LocalSortGtOperator(
-    dag=dag,
-    batch_name="nnunet-cohort",
-    input_operator=get_test_images
-)
+sort_gt = LocalSortGtOperator(dag=dag, batch_name="nnunet-cohort", input_operator=get_test_images)
 
 # dcm2nifti_gt = DcmSeg2ItkOperator(
 #     dag=dag,
@@ -204,8 +193,7 @@ get_ref_ct_series_from_gt = LocalGetRefSeriesOperator(
     parallel_id="ct",
     modality=None,
     batch_name=str(get_test_images.operator_out_dir),
-    delete_input_on_success=False
-
+    delete_input_on_success=False,
 )
 dcm2nifti_gt = DcmStruct2Nifti(
     dag=dag,
@@ -214,7 +202,7 @@ dcm2nifti_gt = DcmStruct2Nifti(
     dicom_operator=get_ref_ct_series_from_gt,
     batch_name=str(get_test_images.operator_out_dir),
     parallel_id="gt",
-    delete_input_on_success=False
+    delete_input_on_success=False,
 )
 
 dcm2nifti_ct = DcmConverterOperator(
@@ -223,21 +211,12 @@ dcm2nifti_ct = DcmConverterOperator(
     parallel_id="ct",
     parallel_processes=parallel_processes,
     batch_name=str(get_test_images.operator_out_dir),
-    output_format='nii.gz'
+    output_format="nii.gz",
 )
 
-get_input = LocalGetInputDataOperator(
-    dag=dag,
-    check_modality=True,
-    parallel_downloads=5
-)
+get_input = LocalGetInputDataOperator(dag=dag, check_modality=True, parallel_downloads=5)
 
-dcm2bin = Bin2DcmOperator(
-    dag=dag,
-    input_operator=get_input,
-    name="extract-binary",
-    file_extensions="*.dcm"
-)
+dcm2bin = Bin2DcmOperator(dag=dag, input_operator=get_input, name="extract-binary", file_extensions="*.dcm")
 
 extract_model = GetTaskModelOperator(
     dag=dag,
@@ -245,7 +224,7 @@ extract_model = GetTaskModelOperator(
     target_level="batch_element",
     input_operator=dcm2bin,
     operator_out_dir="model-exports",
-    mode="install_zip"
+    mode="install_zip",
 )
 
 nnunet_predict = NnUnetOperator(
@@ -346,12 +325,22 @@ evaluation = DiceEvaluationOperator(
     parallel_processes=1,
     parallel_id="",
     trigger_rule="all_done",
-    batch_name=str(get_test_images.operator_out_dir)
+    batch_name=str(get_test_images.operator_out_dir),
 )
 
 clean = LocalWorkflowCleanerOperator(dag=dag, clean_workflow_dir=False)
 
-get_test_images >> sort_gt >> get_ref_ct_series_from_gt >> dcm2nifti_ct >> nnunet_predict >> do_inference >> seg_check_inference >> seg_check_gt >> evaluation
+(
+    get_test_images
+    >> sort_gt
+    >> get_ref_ct_series_from_gt
+    >> dcm2nifti_ct
+    >> nnunet_predict
+    >> do_inference
+    >> seg_check_inference
+    >> seg_check_gt
+    >> evaluation
+)
 get_ref_ct_series_from_gt >> dcm2nifti_gt >> seg_check_gt
 get_input >> dcm2bin >> extract_model >> nnunet_predict >> nnunet_ensemble >> do_ensemble
 do_inference >> do_ensemble >> seg_check_ensemble >> evaluation

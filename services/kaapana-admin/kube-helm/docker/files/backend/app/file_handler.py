@@ -1,15 +1,14 @@
 import os
-import math
+from typing import Tuple
 
-from typing import Dict, List, Set, Union, Tuple
+import aiofiles
+import math
 from fastapi import UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.logger import logger
-import aiofiles
 
-from config import settings
-import schemas
 import helm_helper
-
+import schemas
+from config import settings
 
 chunks_fname: str = ""
 chunks_fsize: int = 0
@@ -80,11 +79,11 @@ def add_file(file: UploadFile, content: bytes, overwrite: bool = True) -> Tuple[
 
     fname, fversion = file.filename.split(".tgz")[0].rsplit("-", 1)
 
-    helm_helper.update_extension_state(schemas.ExtensionStateUpdate.construct(
-        extension_name=fname,
-        extension_version=fversion,
-        state=schemas.ExtensionStateType.NOT_INSTALLED
-    ))
+    helm_helper.update_extension_state(
+        schemas.ExtensionStateUpdate.construct(
+            extension_name=fname, extension_version=fversion, state=schemas.ExtensionStateType.NOT_INSTALLED
+        )
+    )
 
     if msg == "":
         msg = "Successfully added chart file {0}".format(fname)
@@ -103,7 +102,8 @@ def init_file_chunks(fname: str, fsize: int, chunk_size: int, index: int, endind
         raise AssertionError(f"max iterations already reached: {index} > {max_iter}")
 
     logger.debug(
-        f"in function: init_file_chunks with {fname=}, {fsize=}, {chunk_size=}, {index=}, {endindex=}, {max_iter=}")
+        f"in function: init_file_chunks with {fname=}, {fsize=}, {chunk_size=}, {index=}, {endindex=}, {max_iter=}"
+    )
 
     fpath, msg = check_file_exists(fname, overwrite)
     logger.debug(f"add_file_chunks first call, creating file {fpath}")
@@ -127,11 +127,11 @@ def add_file_chunks(chunk: bytes):
     """
 
     Args:
-        chunk (bytes): 
+        chunk (bytes):
 
     Raises:
-        AssertionError: 
-        AssertionError: 
+        AssertionError:
+        AssertionError:
 
     Returns:
         int: next expected index from front end
@@ -158,8 +158,7 @@ def add_file_chunks(chunk: bytes):
 async def ws_add_file_chunks(ws: WebSocket, fname: str, fsize: int, chunk_size: int, overwrite: bool = True):
     max_iter = math.ceil(fsize / chunk_size)
 
-    logger.debug(
-        f"in function: ws_add_file_chunks with {fname=}, {fsize=}, {chunk_size=}, {max_iter}")
+    logger.debug(f"in function: ws_add_file_chunks with {fname=}, {fsize=}, {chunk_size=}, {max_iter}")
 
     try:
         fpath, msg = check_file_exists(fname, overwrite)
@@ -177,8 +176,7 @@ async def ws_add_file_chunks(ws: WebSocket, fname: str, fsize: int, chunk_size: 
 
                 logger.debug("awaiting bytes")
                 data = await ws.receive_bytes()
-                logger.debug(
-                    f"received data from websocket, index {i}, length {len(data)}")
+                logger.debug(f"received data from websocket, index {i}, length {len(data)}")
                 await f.write(data)
                 await ws.send_json({"index": i, "success": True})
                 i += 1
@@ -207,7 +205,7 @@ def run_microk8s_import(fname: str) -> Tuple[bool, str]:
     # check if file exists
     if not os.path.exists(fpath):
         logger.error(f"file can not be found in path {fpath}")
-        return False,  f"file {fname} can not be found"
+        return False, f"file {fname} can not be found"
     cmd = f"microk8s.ctr image import {fpath}"
     res, stdout = helm_helper.execute_shell_command(cmd, shell=True, blocking=True, timeout=30)
 

@@ -1,9 +1,6 @@
-import http
-from httpcore import request
-from fastapi import APIRouter, UploadFile, Response, File, Header, Depends, HTTPException
-import requests
-from app.experiments import utils
 from app.dependencies import get_db, Session, get_workflow_service
+from fastapi import APIRouter, Depends, HTTPException
+
 from .services import WorkflowService
 
 router = APIRouter(tags=["workflows"])
@@ -18,12 +15,18 @@ async def dags(service: WorkflowService = Depends(get_workflow_service)):
 
 
 @router.post("/trigger")
-async def trigger_workflow(conf_data: dict, dry_run: str = True,  db: Session = Depends(get_db), service: WorkflowService = Depends(get_workflow_service)):
+async def trigger_workflow(
+    conf_data: dict,
+    dry_run: str = True,
+    db: Session = Depends(get_db),
+    service: WorkflowService = Depends(get_workflow_service),
+):
     db_client_kaapana = crud.get_kaapana_instance(db, remote=False)
     resp, err = service.trigger_workflow(db_client_kaapana, conf_data, dry_run)
     if err:
-        raise HTTPException("trigger_workflow failed with Status Code: {0} , Error: {1} , ".format(
-            err.detail, err.status_code))
+        raise HTTPException(
+            "trigger_workflow failed with Status Code: {0} , Error: {1} , ".format(err.detail, err.status_code)
+        )
     return resp
 
 
@@ -32,8 +35,9 @@ async def running_dags(service: WorkflowService = Depends(get_workflow_service))
     ###### returns [dag_id] for currently running DAGs ######
     resp, err = service.get_running_dags()
     if err:
-        raise HTTPException("get_running_dags failed with Status Code: {0} , Error: {1}".format(
-            err.detail, err.status_code))
+        raise HTTPException(
+            "get_running_dags failed with Status Code: {0} , Error: {1}".format(err.detail, err.status_code)
+        )
     return resp
 
 

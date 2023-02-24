@@ -1,6 +1,7 @@
 from datetime import timedelta
 
-from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, default_registry, kaapana_build_version
+from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, \
+    default_registry, kaapana_build_version
 
 
 class TotalSegmentatorOperator(KaapanaBaseOperator):
@@ -24,15 +25,9 @@ class TotalSegmentatorOperator(KaapanaBaseOperator):
 
     execution_timeout = timedelta(minutes=10)
 
-    def __init__(self,
-                 dag,
-                 name="total-segmentator",
-                 task="total",
-                 env_vars=None,
-                 execution_timeout=execution_timeout,
-                 **kwargs
-                 ):
-
+    def __init__(
+        self, dag, name="total-segmentator", task="total", env_vars=None, execution_timeout=execution_timeout, **kwargs
+    ):
         if env_vars is None:
             env_vars = {}
 
@@ -51,5 +46,5 @@ class TotalSegmentatorOperator(KaapanaBaseOperator):
             env_vars=env_vars,
             ram_mem_mb=12000,
             gpu_mem_mb=8000,
-            **kwargs
+            **kwargs,
         )

@@ -1,15 +1,14 @@
-from genericpath import isdir
-import os
 import glob
 import json
-import shutil
-from pathlib import Path
+import os
 import random
+import shutil
 import time
+from os.path import join, exists, dirname, basename
+from pathlib import Path
+
 import nibabel as nib
 import numpy as np
-from multiprocessing.pool import ThreadPool
-from os.path import join, exists, dirname, basename, isdir
 
 
 def timing(f):
@@ -17,8 +16,9 @@ def timing(f):
         time1 = time.time()
         ret = f(*args, **kwargs)
         time2 = time.time()
-        print('{:s} function took {:.3f} s'.format(f.__name__, (time2-time1)))
+        print("{:s} function took {:.3f} s".format(f.__name__, (time2 - time1)))
         return ret
+
     return wrap
 
 
@@ -67,7 +67,7 @@ def process_seg_nifti(seg_nifti):
     if len(meta_info_json_path) == 1 and exists(meta_info_json_path[0]):
         meta_info_json_path = meta_info_json_path[0]
         print("# Found DCMQI meta-json")
-        with open(meta_info_json_path, 'r') as f:
+        with open(meta_info_json_path, "r") as f:
             meta_info = json.load(f)
 
         if "segmentAttributes" in meta_info:
@@ -149,12 +149,16 @@ def process_seg_nifti(seg_nifti):
                 print(f"# New NIFTI encoding:  {nifti_bin_encoding}")
                 print(f"# Existing encoding:   {label_names_found[label_tag] }")
                 print("#")
-                print(f"# replacing labels: {label_tag} -> from {nifti_bin_encoding} -> to {label_names_found[label_tag]}")
+                print(
+                    f"# replacing labels: {label_tag} -> from {nifti_bin_encoding} -> to {label_names_found[label_tag]}"
+                )
                 print("#")
                 print("##################################################### ")
                 print("#")
             else:
-                print(f"# replacing labels: {label_tag} -> from {nifti_bin_encoding} -> to {label_names_found[label_tag]}")
+                print(
+                    f"# replacing labels: {label_tag} -> from {nifti_bin_encoding} -> to {label_names_found[label_tag]}"
+                )
             nii_array = np.where(nii_array == nifti_bin_encoding, label_names_found[label_tag], nii_array)
             nifti_bin_encoding = label_names_found[label_tag]
         else:
@@ -222,7 +226,7 @@ def prepare_dataset(datset_list, dataset_id):
         if len(meta_info_json_path) == 1 and exists(meta_info_json_path[0]):
             meta_info_json_path = meta_info_json_path[0]
             print("# Found DCMQI meta-json")
-            with open(meta_info_json_path, 'r') as f:
+            with open(meta_info_json_path, "r") as f:
                 meta_info = json.load(f)
 
             if "segmentAttributes" in meta_info:
@@ -247,10 +251,7 @@ def prepare_dataset(datset_list, dataset_id):
 
         print("# Adding dataset ...")
         template_dataset_json[dataset_id].append(
-            {
-                "image": join("./", "imagesTr", base_file_path),
-                "label": join("./", "labelsTr", base_file_path)
-            }
+            {"image": join("./", "imagesTr", base_file_path), "label": join("./", "labelsTr", base_file_path)}
         )
         print("# -> element DONE!")
 
@@ -265,7 +266,7 @@ version = os.getenv("VERSION", "N/A")
 training_name = task_name
 training_description = os.getenv("TRAINING_DESCRIPTION", "nnUNet training")
 training_reference = os.getenv("TRAINING_REFERENCE", "nnUNet")
-shuffle_seed = int(os.getenv("SHUFFLE_SEED", "0")),
+shuffle_seed = (int(os.getenv("SHUFFLE_SEED", "0")),)
 network_trainer = os.getenv("TRAIN_NETWORK_TRAINER", "N/A")
 model_architecture = os.getenv("MODEL", "UNKNOWN")  # -> model 2d,3d_lowres etc
 test_percentage = int(os.getenv("TEST_PERCENTAGE", "0"))
@@ -279,8 +280,8 @@ input_label_dirs = os.getenv("PREP_LABEL_DIRS", "")
 exit_on_issue = True if os.getenv("PREP_EXIT_ON_ISSUE", "True").lower() == "true" else False
 input_modality_dirs = os.getenv("INPUT_MODALITY_DIRS", "")
 
-batch_dir = join('/', os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"])
-operator_out_dir = join('/', os.environ["WORKFLOW_DIR"], os.environ["OPERATOR_OUT_DIR"])
+batch_dir = join("/", os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"])
+operator_out_dir = join("/", os.environ["WORKFLOW_DIR"], os.environ["OPERATOR_OUT_DIR"])
 task_dir = join(operator_out_dir, "nnUNet_raw_data", os.environ["TASK"])
 
 use_nifti_labels = True if os.getenv("PREP_USE_NIFITI_LABELS", "False").lower() == "true" else False
@@ -315,7 +316,7 @@ print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 series_list_tmp = [f.path for f in os.scandir(batch_dir) if f.is_dir()]
 series_list_tmp.sort()
 
-series_list=[]
+series_list = []
 for series in series_list_tmp:
     print("######################################################################")
     print(f"# Check series {series} for seg-check files...")
@@ -360,13 +361,11 @@ template_dataset_json = {
     "instance_name": instance_name,
     "max_epochs": max_epochs,
     "training": [],
-    "test": []
-
-
+    "test": [],
 }
 
 series_count = len(series_list)
-test_count = round((series_count/100)*test_percentage)
+test_count = round((series_count / 100) * test_percentage)
 train_count = series_count - test_count
 
 template_dataset_json["numTraining"] = train_count
@@ -426,13 +425,13 @@ template_dataset_json["labels"] = sorted_labels
 print("#")
 print("#")
 
-with open(join(task_dir, 'dataset.json'), 'w') as fp:
+with open(join(task_dir, "dataset.json"), "w") as fp:
     json.dump(template_dataset_json, fp, indent=4, sort_keys=False)
 
-with open(join('/', os.environ["WORKFLOW_DIR"], os.environ["OPERATOR_OUT_DIR"], 'dataset.json'), 'w') as fp:
+with open(join("/", os.environ["WORKFLOW_DIR"], os.environ["OPERATOR_OUT_DIR"], "dataset.json"), "w") as fp:
     # One could make this smoother, so not saving a copy of the file...
     json.dump(template_dataset_json, fp, indent=4, sort_keys=False)
-    
+
 
 print("#############################################################")
 print("#")

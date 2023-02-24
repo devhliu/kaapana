@@ -1,17 +1,18 @@
-from airflow.utils.log.logging_mixin import LoggingMixin
-from airflow.utils.dates import days_ago
 from datetime import timedelta
+
 from airflow.models import DAG
-from datetime import datetime
-
-
-from kaapana.operators.Itk2DcmSegOperator import Itk2DcmSegOperator
-from kaapana.operators.DcmSendOperator import DcmSendOperator
+from airflow.utils.dates import days_ago
+from airflow.utils.log.logging_mixin import LoggingMixin
 from kaapana.operators.DcmConverterOperator import DcmConverterOperator
-from kaapana.operators.LocalGetInputDataOperator import LocalGetInputDataOperator
-from kaapana.operators.LocalWorkflowCleanerOperator import LocalWorkflowCleanerOperator
+from kaapana.operators.DcmSendOperator import DcmSendOperator
+from kaapana.operators.Itk2DcmSegOperator import Itk2DcmSegOperator
+from kaapana.operators.LocalGetInputDataOperator import \
+    LocalGetInputDataOperator
+from kaapana.operators.LocalWorkflowCleanerOperator import \
+    LocalWorkflowCleanerOperator
 
 from shapemodel.OrganSegmentationOperator import OrganSegmentationOperator
+
 log = LoggingMixin().log
 
 ui_forms = {
@@ -54,8 +55,8 @@ ui_forms = {
                 "type": "boolean",
                 "readOnly": True,
                 "required": True,
-            }
-        }
+            },
+        },
     },
     "workflow_form": {
         "type": "object",
@@ -87,22 +88,22 @@ ui_forms = {
                 "type": "boolean",
                 "default": True,
                 "readOnly": False,
-            }
-        }
-    }
+            },
+        },
+    },
 }
 
 args = {
-    'ui_visible': True,
-    'ui_forms': ui_forms,
-    'owner': 'kaapana',
-    'start_date': days_ago(0),
-    'retries': 1,
-    'retry_delay': timedelta(seconds=60)
+    "ui_visible": True,
+    "ui_forms": ui_forms,
+    "owner": "kaapana",
+    "start_date": days_ago(0),
+    "retries": 1,
+    "retry_delay": timedelta(seconds=60),
 }
 
 dag = DAG(
-    dag_id='shapemodel-organ-seg',
+    dag_id="shapemodel-organ-seg",
     default_args=args,
     schedule_interval=None,
     concurrency=40,
@@ -112,20 +113,19 @@ dag = DAG(
 get_input = LocalGetInputDataOperator(dag=dag, check_modality=True)
 
 # Convert DICOM to NRRD
-dcm2nrrd = DcmConverterOperator(dag=dag, input_operator=get_input, output_format='nrrd')
+dcm2nrrd = DcmConverterOperator(dag=dag, input_operator=get_input, output_format="nrrd")
 
 # Segment organs
-organSeg_unityCS = OrganSegmentationOperator(
-    dag=dag, input_operator=dcm2nrrd, mode="unityCS")
+organSeg_unityCS = OrganSegmentationOperator(dag=dag, input_operator=dcm2nrrd, mode="unityCS")
 
-organSeg_liver = OrganSegmentationOperator(
-    dag=dag, input_operator=organSeg_unityCS, mode="Liver")
-organSeg_spleen = OrganSegmentationOperator(
-    dag=dag, input_operator=organSeg_unityCS, mode="Spleen")
+organSeg_liver = OrganSegmentationOperator(dag=dag, input_operator=organSeg_unityCS, mode="Liver")
+organSeg_spleen = OrganSegmentationOperator(dag=dag, input_operator=organSeg_unityCS, mode="Spleen")
 organSeg_kidney_right = OrganSegmentationOperator(
-    dag=dag, input_operator=organSeg_unityCS, mode="RightKidney", spleen_operator=organSeg_spleen)
+    dag=dag, input_operator=organSeg_unityCS, mode="RightKidney", spleen_operator=organSeg_spleen
+)
 organSeg_kidney_left = OrganSegmentationOperator(
-    dag=dag, input_operator=organSeg_unityCS, mode="LeftKidney", spleen_operator=organSeg_spleen)
+    dag=dag, input_operator=organSeg_unityCS, mode="LeftKidney", spleen_operator=organSeg_spleen
+)
 
 
 # Convert NRRD segmentations to DICOM segmentation objects
@@ -135,9 +135,9 @@ nrrd2dcmSeg_liver = Itk2DcmSegOperator(
     input_operator=get_input,
     segmentation_operator=organSeg_liver,
     single_label_seg_info="Liver",
-    parallel_id='liver',
+    parallel_id="liver",
     alg_name=alg_name,
-    series_description=f'{alg_name} - Liver'
+    series_description=f"{alg_name} - Liver",
 )
 
 nrrd2dcmSeg_spleen = Itk2DcmSegOperator(
@@ -145,9 +145,9 @@ nrrd2dcmSeg_spleen = Itk2DcmSegOperator(
     input_operator=get_input,
     segmentation_operator=organSeg_spleen,
     single_label_seg_info="Spleen",
-    parallel_id='spleen',
+    parallel_id="spleen",
     alg_name=alg_name,
-    series_description=f'{alg_name} - Spleen'
+    series_description=f"{alg_name} - Spleen",
 )
 
 nrrd2dcmSeg_kidney_right = Itk2DcmSegOperator(
@@ -155,9 +155,9 @@ nrrd2dcmSeg_kidney_right = Itk2DcmSegOperator(
     input_operator=get_input,
     segmentation_operator=organSeg_kidney_right,
     single_label_seg_info="Right@Kidney",
-    parallel_id='kidney-right',
+    parallel_id="kidney-right",
     alg_name=alg_name,
-    series_description=f'{alg_name} - Kidney-Right'
+    series_description=f"{alg_name} - Kidney-Right",
 )
 
 nrrd2dcmSeg_kidney_left = Itk2DcmSegOperator(
@@ -165,9 +165,9 @@ nrrd2dcmSeg_kidney_left = Itk2DcmSegOperator(
     input_operator=get_input,
     segmentation_operator=organSeg_kidney_left,
     single_label_seg_info="Left@Kidney",
-    parallel_id='kidney-left',
+    parallel_id="kidney-left",
     alg_name=alg_name,
-    series_description=f'{alg_name} - Kidney-Left'
+    series_description=f"{alg_name} - Kidney-Left",
 )
 
 # Send DICOM segmentation objects to pacs

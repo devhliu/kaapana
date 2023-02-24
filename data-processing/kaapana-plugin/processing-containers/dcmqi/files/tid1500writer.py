@@ -1,15 +1,13 @@
-
-import os
+import json
+from glob import glob
 from os import getenv
 from os.path import join, exists, dirname, basename, realpath
-from glob import glob
 from pathlib import Path
-import json
-import pydicom
-from pydicom.uid import generate_uid
-
 # For shell-execution
 from subprocess import PIPE, run
+
+import pydicom
+
 execution_timeout = 10
 
 # Counter to check if smth has been processed
@@ -20,6 +18,7 @@ processed_count = 0
 code_lookup_table_path = join(dirname(realpath(__file__)), "code_lookup_table.json")
 with open(code_lookup_table_path) as f:
     code_lookup_table = json.load(f)
+
 
 def find_code_meaning(tag):
     result = None
@@ -58,7 +57,9 @@ def find_code_meaning(tag):
                     result = entry
                     break
                 elif tag_part == entry["Body Part Examined"].lower():
-                    print(f"Found Code Meaning: {entry['Body Part Examined'].lower()} for search term: {tag_part.lower()}")
+                    print(
+                        f"Found Code Meaning: {entry['Body Part Examined'].lower()} for search term: {tag_part.lower()}"
+                    )
                     result = entry
                     break
             if result != None:
@@ -73,7 +74,9 @@ def find_code_meaning(tag):
                     result = entry
                     break
                 elif tag_part in entry["Body Part Examined"].lower():
-                    print(f"Found Code Meaning: {entry['Body Part Examined'].lower()} for search term: {tag_part.lower()}")
+                    print(
+                        f"Found Code Meaning: {entry['Body Part Examined'].lower()} for search term: {tag_part.lower()}"
+                    )
                     result = entry
                     break
             if result != None:
@@ -120,26 +123,50 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
             print(f"# measurements-json loaded: {json_path}")
             print("# ----> 'measurement_groups' could not be found !")
             print("#")
-            print("# This json is not compatible with this operator -> please have a look at the docs or contact the Kaapana team.")
+            print(
+                "# This json is not compatible with this operator -> please have a look at the docs or contact the Kaapana team."
+            )
             print("#")
             print("##################################################")
             print("#")
             exit(1)
 
     tid_template = {}
-    tid_template["@schema"] = "https://raw.githubusercontent.com/qiicr/dcmqi/master/doc/schemas/sr-tid1500-schema.json#"
-    tid_template["SeriesNumber"] = str(input_measurements_json["SeriesNumber"]) if "SeriesNumber" in input_measurements_json else str(new_series_number)
-    tid_template["SeriesDescription"] = str(input_measurements_json["SeriesDescription"]) if "SeriesDescription" in input_measurements_json else series_description
-    tid_template["InstanceNumber"] = str(input_measurements_json["InstanceNumber"]) if "InstanceNumber" in input_measurements_json else f"{processed_count+1}"
+    tid_template[
+        "@schema"
+    ] = "https://raw.githubusercontent.com/qiicr/dcmqi/master/doc/schemas/sr-tid1500-schema.json#"
+    tid_template["SeriesNumber"] = (
+        str(input_measurements_json["SeriesNumber"])
+        if "SeriesNumber" in input_measurements_json
+        else str(new_series_number)
+    )
+    tid_template["SeriesDescription"] = (
+        str(input_measurements_json["SeriesDescription"])
+        if "SeriesDescription" in input_measurements_json
+        else series_description
+    )
+    tid_template["InstanceNumber"] = (
+        str(input_measurements_json["InstanceNumber"])
+        if "InstanceNumber" in input_measurements_json
+        else f"{processed_count+1}"
+    )
 
     tid_template["compositeContext"] = compositeContext
     tid_template["imageLibrary"] = imageLibrary
 
     tid_template["observerContext"] = {
-        "ObserverType": str(input_measurements_json["ObserverType"]) if "ObserverType" in input_measurements_json else "DEVICE",
-        "DeviceObserverName": str(input_measurements_json["DeviceObserverName"]) if "DeviceObserverName" in input_measurements_json else "Kaapana",
-        "DeviceObserverManufacturer": str(input_measurements_json["DeviceObserverManufacturer"]) if "DeviceObserverManufacturer" in input_measurements_json else "Kaapana",
-        "DeviceObserverUID": str(input_measurements_json["DeviceObserverUID"]) if "DeviceObserverUID" in input_measurements_json else "1.2.3.4.5"  # generate_uid()
+        "ObserverType": str(input_measurements_json["ObserverType"])
+        if "ObserverType" in input_measurements_json
+        else "DEVICE",
+        "DeviceObserverName": str(input_measurements_json["DeviceObserverName"])
+        if "DeviceObserverName" in input_measurements_json
+        else "Kaapana",
+        "DeviceObserverManufacturer": str(input_measurements_json["DeviceObserverManufacturer"])
+        if "DeviceObserverManufacturer" in input_measurements_json
+        else "Kaapana",
+        "DeviceObserverUID": str(input_measurements_json["DeviceObserverUID"])
+        if "DeviceObserverUID" in input_measurements_json
+        else "1.2.3.4.5",  # generate_uid()
     }
 
     # tid_template["observerContext"] = {
@@ -148,17 +175,31 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
     # },
 
     # https://dicom.innolitics.com/ciods/basic-text-sr/sr-document-general/0040a493
-    tid_template["VerificationFlag"] = str(input_measurements_json["VerificationFlag"]) if "VerificationFlag" in input_measurements_json else "VERIFIED"
-    tid_template["CompletionFlag"] = str(input_measurements_json["CompletionFlag"]) if "CompletionFlag" in input_measurements_json else "COMPLETE"
-    tid_template["activitySession"] = str(input_measurements_json["activitySession"]) if "activitySession" in input_measurements_json else "1"
+    tid_template["VerificationFlag"] = (
+        str(input_measurements_json["VerificationFlag"])
+        if "VerificationFlag" in input_measurements_json
+        else "VERIFIED"
+    )
+    tid_template["CompletionFlag"] = (
+        str(input_measurements_json["CompletionFlag"]) if "CompletionFlag" in input_measurements_json else "COMPLETE"
+    )
+    tid_template["activitySession"] = (
+        str(input_measurements_json["activitySession"]) if "activitySession" in input_measurements_json else "1"
+    )
     tid_template["timePoint"] = "1"  # should have values of 1 for baseline, and 2 for the followup
 
     tid_template["Measurements"] = []
 
     for i, input_measurement_group in enumerate(input_measurements_json["measurement_groups"], start=0):
         measurement_group = {}
-        measurement_group["TrackingIdentifier"] = input_measurement_group["TrackingIdentifier"] if "TrackingIdentifier" in input_measurement_group else f"Measurements group {i}"
-        measurement_group["ReferencedSegment"] = input_measurement_group["ReferencedSegment"] if "ReferencedSegment" in input_measurement_group else i
+        measurement_group["TrackingIdentifier"] = (
+            input_measurement_group["TrackingIdentifier"]
+            if "TrackingIdentifier" in input_measurement_group
+            else f"Measurements group {i}"
+        )
+        measurement_group["ReferencedSegment"] = (
+            input_measurement_group["ReferencedSegment"] if "ReferencedSegment" in input_measurement_group else i
+        )
 
         if "SegSeriesFilename" in input_measurement_group:
             if input_measurement_group["SegSeriesFilename"] in tid_template["compositeContext"]:
@@ -172,7 +213,9 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
                 print("#")
                 print("##################  ERROR  #######################")
                 print("#")
-                print(f"# ----> Could not find specified 'SegSeriesFilename':{input_measurement_group['SourceSeriesFilename']} at {seg_dicom_dir} !")
+                print(
+                    f"# ----> Could not find specified 'SegSeriesFilename':{input_measurement_group['SourceSeriesFilename']} at {seg_dicom_dir} !"
+                )
                 print("#")
                 print("#")
                 print("##################################################")
@@ -197,7 +240,7 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
             measurement_group["Finding"] = {
                 "CodeValue": result["Code Value"],
                 "CodingSchemeDesignator": result["Coding Scheme Designator"],
-                "CodeMeaning": result["Code Meaning"]
+                "CodeMeaning": result["Code Meaning"],
             }
         else:
             measurement_group["Finding"] = {}
@@ -208,15 +251,21 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
             measurement_group["FindingSite"] = {
                 "CodeValue": result["Code Value"],
                 "CodingSchemeDesignator": result["Coding Scheme Designator"],
-                "CodeMeaning": result["Code Meaning"]
+                "CodeMeaning": result["Code Meaning"],
             }
         else:
             measurement_group["FindingSite"] = {}
 
         measurement_group["measurementAlgorithmIdentification"] = {
-            "AlgorithmName": input_measurement_group["AlgorithmName"] if "AlgorithmName" in input_measurement_group else "N/A",
-            "AlgorithmVersion": input_measurement_group["AlgorithmVersion"] if "AlgorithmVersion" in input_measurement_group else "N/A",
-            "AlgorithmParameters": input_measurement_group["AlgorithmParameters"].split(";") if "AlgorithmParameters" in input_measurement_group else ["N/A"],
+            "AlgorithmName": input_measurement_group["AlgorithmName"]
+            if "AlgorithmName" in input_measurement_group
+            else "N/A",
+            "AlgorithmVersion": input_measurement_group["AlgorithmVersion"]
+            if "AlgorithmVersion" in input_measurement_group
+            else "N/A",
+            "AlgorithmParameters": input_measurement_group["AlgorithmParameters"].split(";")
+            if "AlgorithmParameters" in input_measurement_group
+            else ["N/A"],
         }
 
         measurement_group["measurementItems"] = []
@@ -227,7 +276,7 @@ def create_measurements_json(json_path, src_dicom_dir, seg_dicom_dir):
                 try:
                     value_input = f"{float(input_measurement['value']):.4f}"
                 except ValueError:
-                    value_input = input_measurement['value']
+                    value_input = input_measurement["value"]
                 measurement["value"] = str(value_input)
 
                 if "quantity" in input_measurement:
@@ -262,10 +311,14 @@ def process_input_file(inputCompositeContextDirectory, inputImageLibraryDirector
 
     command = [
         f"{DCMQI}/tid1500writer",
-        "--inputCompositeContextDirectory", inputCompositeContextDirectory,
-        "--inputImageLibraryDirectory", inputImageLibraryDirectory,
-        "--inputMetadata", inputMetadata,
-        "--outputDICOM", output_dicom_path
+        "--inputCompositeContextDirectory",
+        inputCompositeContextDirectory,
+        "--inputImageLibraryDirectory",
+        inputImageLibraryDirectory,
+        "--inputMetadata",
+        inputMetadata,
+        "--outputDICOM",
+        output_dicom_path,
     ]
     output = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True, timeout=execution_timeout)
     # command stdout output -> output.stdout
@@ -303,21 +356,21 @@ def process_input_file(inputCompositeContextDirectory, inputImageLibraryDirector
     print("# Modify DICOM: (0008,0016) => 1.2.840.10008.5.1.4.1.1.88.11")
     dcmseg_file = pydicom.dcmread(output_dicom_path)
     # dcmseg_file[0x0008,0x0016].value = "1.2.840.10008.5.1.4.1.1.88.11" # change Enhanced SR Storage -> Basic Text SR Storage
-    dcmseg_file.add_new([0x0008,0x0016], 'UI', "1.2.840.10008.5.1.4.1.1.88.11")
+    dcmseg_file.add_new([0x0008, 0x0016], "UI", "1.2.840.10008.5.1.4.1.1.88.11")
 
     with open(inputMetadata) as f:
         inputMetadata_dict = json.load(f)
     if "seg_series_aetitle" in inputMetadata_dict:
         aetitle = inputMetadata_dict["seg_series_aetitle"]
         print(f"# Adding aetitle to DICOM SR:   {aetitle}")
-        dcmseg_file.add_new([0x012, 0x020], 'LO', aetitle)  # Clinical Trial Protocol ID
+        dcmseg_file.add_new([0x012, 0x020], "LO", aetitle)  # Clinical Trial Protocol ID
     dcmseg_file.save_as(output_dicom_path)
 
     processed_count += 1
     return True, inputMetadata
 
 
-DCMQI = '/app/dcmqi/bin'
+DCMQI = "/app/dcmqi/bin"
 
 # DCMQI = '/home/jonas/software/dcmqi/bin'
 # os.environ['SRC_DICOM_OPERATOR'] = 'initial-input'
@@ -378,7 +431,7 @@ print("#")
 
 
 # Loop for every batch-element (usually series)
-batch_folders = sorted([f for f in glob(join('/', workflow_dir, batch_name, '*'))])
+batch_folders = sorted([f for f in glob(join("/", workflow_dir, batch_name, "*"))])
 for batch_element_dir in batch_folders:
     print("#")
     print(f"# Processing batch-element {batch_element_dir}")
@@ -401,16 +454,17 @@ for batch_element_dir in batch_folders:
     print(f"# Found {len(json_input_files)} json input-files!")
 
     src_dicom_dir = join(batch_element_dir, src_dicom_operator)
-    seg_dicom_dir = join(batch_element_dir, seg_dicom_operator) if seg_dicom_operator is not None else join(batch_element_dir, operator_in_dir)
+    seg_dicom_dir = (
+        join(batch_element_dir, seg_dicom_operator)
+        if seg_dicom_operator is not None
+        else join(batch_element_dir, operator_in_dir)
+    )
 
     # Single process:
     # Loop for every input-file found with extension 'input_file_extension'
     for input_file in json_input_files:
-
         inputMetadata_path = create_measurements_json(
-            json_path=input_file,
-            src_dicom_dir=src_dicom_dir,
-            seg_dicom_dir=seg_dicom_dir
+            json_path=input_file, src_dicom_dir=src_dicom_dir, seg_dicom_dir=seg_dicom_dir
         )
 
         output_dicom_path = join(element_output_dir, basename(input_file).replace(".json", ".dcm"))
@@ -418,7 +472,7 @@ for batch_element_dir in batch_folders:
             inputCompositeContextDirectory=seg_dicom_dir,
             inputImageLibraryDirectory=src_dicom_dir,
             inputMetadata=inputMetadata_path,
-            output_dicom_path=output_dicom_path
+            output_dicom_path=output_dicom_path,
         )
 
 
@@ -440,14 +494,18 @@ if processed_count == 0:
     print("##################################################")
     print("#")
 
-    batch_input_dir = join('/', workflow_dir, operator_in_dir)
-    batch_output_dir = join('/', workflow_dir, operator_out_dir)
+    batch_input_dir = join("/", workflow_dir, operator_in_dir)
+    batch_output_dir = join("/", workflow_dir, operator_out_dir)
 
     json_input_files = glob(join(batch_input_dir, input_file_extension), recursive=False)
     print(f"# Found {len(json_input_files)} json input-files!")
 
     src_dicom_dir = join(batch_input_dir, src_dicom_operator)
-    seg_dicom_dir = join(batch_output_dir, seg_dicom_operator) if seg_dicom_operator is not None else join(batch_output_dir, operator_in_dir)
+    seg_dicom_dir = (
+        join(batch_output_dir, seg_dicom_operator)
+        if seg_dicom_operator is not None
+        else join(batch_output_dir, operator_in_dir)
+    )
 
     # Single process:
     # Loop for every input-file found with extension 'input_file_extension'
@@ -462,7 +520,7 @@ if processed_count == 0:
         result, input_file = process_input_file(
             inputCompositeContextDirectory=seg_dicom_dir,
             inputImageLibraryDirectory=src_dicom_dir,
-            inputMetadata=inputMetadata_path
+            inputMetadata=inputMetadata_path,
         )
 
     print("#")

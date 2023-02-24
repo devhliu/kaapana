@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 
-import os
-import json
-from datetime import timedelta
-from kaapana.operators.KaapanaPythonBaseOperator import KaapanaPythonBaseOperator
-from kaapana.operators.HelperDcmWeb import HelperDcmWeb
-from kaapana.operators.HelperOpensearch import HelperOpensearch
-from multiprocessing.pool import ThreadPool
-from os.path import join, exists, dirname
-import shutil
 import glob
+import json
+import os
+import shutil
+from datetime import timedelta
+from multiprocessing.pool import ThreadPool
+from os.path import join, dirname
+
 import pydicom
 from kaapana.operators.HelperCaching import cache_operator_output
+from kaapana.operators.HelperDcmWeb import HelperDcmWeb
+from kaapana.operators.HelperOpensearch import HelperOpensearch
+from kaapana.operators.KaapanaPythonBaseOperator import \
+    KaapanaPythonBaseOperator
+
 
 class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
     """
@@ -32,15 +35,24 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
     * Stores downloaded 'dicoms' or 'json' files in the 'operator_out_dir'
     """
 
-
-
     def check_dag_modality(self, input_modality):
         config = self.conf
         input_modality = input_modality.lower()
-        if config is not None and "form_data" in config and config["form_data"] is not None and "input" in config[
-            "form_data"]:
+        if (
+            config is not None
+            and "form_data" in config
+            and config["form_data"] is not None
+            and "input" in config["form_data"]
+        ):
             dag_modality = config["form_data"]["input"].lower()
-            if dag_modality == "ct" or dag_modality == "mri" or dag_modality == "mrt" or dag_modality == "seg" or dag_modality == "ot" or dag_modality == "xr":
+            if (
+                dag_modality == "ct"
+                or dag_modality == "mri"
+                or dag_modality == "mrt"
+                or dag_modality == "seg"
+                or dag_modality == "ot"
+                or dag_modality == "xr"
+            ):
                 if input_modality != dag_modality:
                     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -52,7 +64,7 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
                     print("")
                     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    raise ValueError('ERROR')
+                    raise ValueError("ERROR")
 
             else:
                 print(f"DAG modality: {dag_modality} is not supported!")
@@ -69,17 +81,16 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
         download_successful = True
         studyUID, seriesUID, dag_run_id = series_dict["studyUID"], series_dict["seriesUID"], series_dict["dag_run_id"]
         print(f"Start download series: {seriesUID}")
-        target_dir = os.path.join(self.workflow_dir, dag_run_id, self.batch_name, f'{seriesUID}', self.operator_out_dir)
+        target_dir = os.path.join(
+            self.workflow_dir, dag_run_id, self.batch_name, f"{seriesUID}", self.operator_out_dir
+        )
         print(f"# Target_dir: {target_dir}")
 
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
 
         if self.data_type == "dicom":
-            download_successful = HelperDcmWeb.downloadSeries(
-                seriesUID=seriesUID,
-                target_dir=target_dir
-            )
+            download_successful = HelperDcmWeb.downloadSeries(seriesUID=seriesUID, target_dir=target_dir)
             if not download_successful:
                 print("Could not download DICOM data!")
                 download_successful = False
@@ -87,7 +98,7 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
         elif self.data_type == "json":
             meta_data = HelperOpensearch.get_series_metadata(series_uid=seriesUID)
             json_path = join(target_dir, "metadata.json")
-            with open(json_path, 'w') as fp:
+            with open(json_path, "w") as fp:
                 json.dump(meta_data, fp, indent=4, sort_keys=True)
 
         elif self.data_type == "minio":
@@ -121,26 +132,25 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
     def start(self, ds, **kwargs):
         print("# Starting module LocalGetInputDataOperator...")
         print("#")
-        self.conf = kwargs['dag_run'].conf
+        self.conf = kwargs["dag_run"].conf
 
-
-        dag_run_id = kwargs['dag_run'].run_id
+        dag_run_id = kwargs["dag_run"].run_id
         if self.conf and ("seriesInstanceUID" in self.conf):
-            series_uid = self.conf.get('seriesInstanceUID')
-            dcm_path = join("/ctpinput","incoming", self.conf.get('dicom_path'))
+            series_uid = self.conf.get("seriesInstanceUID")
+            dcm_path = join("/ctpinput", "incoming", self.conf.get("dicom_path"))
             print("#")
             print(f"# Dicom-path: {dcm_path}")
 
             if not os.path.isdir(dcm_path):
                 print(f"Could not find dicom dir: {dcm_path}")
                 print("Abort!")
-                raise ValueError('ERROR')
+                raise ValueError("ERROR")
             self.move_series(dag_run_id, series_uid, dcm_path)
             return
         if self.conf and "ctpBatch" in self.conf:
-            batch_folder = join("/ctpinput","incoming", self.conf.get('dicom_path'))
+            batch_folder = join("/ctpinput", "incoming", self.conf.get("dicom_path"))
             print(f"# Batch folder: {batch_folder}")
-            dcm_series_paths = [f for f in glob.glob(batch_folder+"/*")]
+            dcm_series_paths = [f for f in glob.glob(batch_folder + "/*")]
             for dcm_series_path in dcm_series_paths:
                 dcm_file_list = glob.glob(dcm_series_path + "/*.dcm", recursive=True)
                 if dcm_file_list:
@@ -153,7 +163,7 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
             return
 
         if self.conf and "dataInputDirs" in self.conf:
-            dataInputDirs = self.conf.get('dataInputDirs')
+            dataInputDirs = self.conf.get("dataInputDirs")
             if not isinstance(dataInputDirs, list):
                 dataInputDirs = [dataInputDirs]
             for src in dataInputDirs:
@@ -169,7 +179,7 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
                     shutil.move(src=src, dst=target)
                     print("# Dag input dir correctly adjusted.")
             return
-    
+
         if self.conf is not None and "data_form" in self.conf:
             self.data_form = self.conf["data_form"]
 
@@ -184,8 +194,14 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
         print("#")
         print("#")
 
-        self.cohort_limit = int(self.data_form["cohort_limit"]) if "cohort_limit" in self.data_form and self.data_form["cohort_limit"] is not None else None
-        self.dicom_data_infos = HelperOpensearch.get_dcm_uid_objects(self.data_form["cohort_identifiers"], self.data_form["cohort_query"]["index"])
+        self.cohort_limit = (
+            int(self.data_form["cohort_limit"])
+            if "cohort_limit" in self.data_form and self.data_form["cohort_limit"] is not None
+            else None
+        )
+        self.dicom_data_infos = HelperOpensearch.get_dcm_uid_objects(
+            self.data_form["cohort_identifiers"], self.data_form["cohort_query"]["index"]
+        )
 
         print(f"# Cohort-limit: {self.cohort_limit}")
         print("#")
@@ -203,11 +219,11 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
                 if "study-uid" not in dcm_uid:
                     print("'study-uid' not found in 'dcm-uid': {}".format(dicom_data_info))
                     print("abort...")
-                    raise ValueError('ERROR')
+                    raise ValueError("ERROR")
                 if "series-uid" not in dcm_uid:
                     print("'series-uid' not found in 'dcm-uid': {}".format(dicom_data_info))
                     print("abort...")
-                    raise ValueError('ERROR')
+                    raise ValueError("ERROR")
 
                 if "modality" in dcm_uid and self.check_modality:
                     modality = dcm_uid["curated_modality"]
@@ -216,26 +232,20 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
                 study_uid = dcm_uid["study-uid"]
                 series_uid = dcm_uid["series-uid"]
 
-                download_list.append(
-                    {
-                        "studyUID": study_uid,
-                        "seriesUID": series_uid,
-                        "dag_run_id": dag_run_id
-                    }
-                )
+                download_list.append({"studyUID": study_uid, "seriesUID": series_uid, "dag_run_id": dag_run_id})
 
             else:
                 print("Error with dag-config!")
                 print("Unknown input: {}".format(dicom_data_info))
                 print("Supported 'dcm-uid' ")
                 print("Dag-conf: {}".format(self.conf))
-                raise ValueError('ERROR')
+                raise ValueError("ERROR")
 
         print("")
         print(f"## SERIES FOUND: {len(download_list)}")
         print("")
         print(f"## SERIES LIMIT: {self.cohort_limit}")
-        download_list = download_list[:self.cohort_limit] if self.cohort_limit is not None else download_list
+        download_list = download_list[: self.cohort_limit] if self.cohort_limit is not None else download_list
         print("")
         print(f"## SERIES TO LOAD: {len(download_list)}")
         print("")
@@ -245,7 +255,7 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
             print(f"# No series to download !! ")
             print("#")
             print("#####################################################")
-            raise ValueError('ERROR')
+            raise ValueError("ERROR")
         series_download_fail = []
         with ThreadPool(self.parallel_downloads) as threadpool:
             results = threadpool.imap_unordered(self.get_data, download_list)
@@ -263,18 +273,20 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
                     print(f"# Series: {series_uid} failed !")
                     print("#")
                 print("#####################################################")
-                raise ValueError('ERROR')
+                raise ValueError("ERROR")
 
-    def __init__(self,
-                 dag,
-                 name="get-input-data",
-                 data_type="dicom",
-                 data_form=None,
-                 check_modality=False,
-                 cohort_limit=None,
-                 parallel_downloads=3,
-                 batch_name=None,
-                 **kwargs):
+    def __init__(
+        self,
+        dag,
+        name="get-input-data",
+        data_type="dicom",
+        data_form=None,
+        check_modality=False,
+        cohort_limit=None,
+        parallel_downloads=3,
+        batch_name=None,
+        **kwargs,
+    ):
         """
         :param data_type: 'dicom' or 'json'
         :param data_form: 'json'
@@ -296,5 +308,5 @@ class LocalGetInputDataOperator(KaapanaPythonBaseOperator):
             python_callable=self.start,
             max_active_tis_per_dag=10,
             execution_timeout=timedelta(minutes=60),
-            **kwargs
+            **kwargs,
         )

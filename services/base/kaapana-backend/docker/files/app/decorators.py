@@ -11,6 +11,7 @@ NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[[Union[NoArgsNoReturnFuncT, NoArgsNoReturnAsyncFuncT]], NoArgsNoReturnAsyncFuncT]
 
+
 # Source: https://github.com/dmontagu/fastapi-utils/blob/master/fastapi_utils/tasks.py
 # Docu: https://fastapi-utils.davidmontague.xyz/user-guide/repeated-tasks/
 def repeat_every(

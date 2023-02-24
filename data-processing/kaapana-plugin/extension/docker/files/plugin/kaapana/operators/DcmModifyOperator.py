@@ -1,9 +1,9 @@
-import os
 from datetime import timedelta
-from kaapana.kubetools.volume_mount import VolumeMount
-from kaapana.kubetools.volume import Volume
-from kaapana.kubetools.resources import Resources as PodResources
 from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, default_registry, kaapana_build_version
+from datetime import timedelta
+
+from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, \
+    default_registry, kaapana_build_version
 
 
 class DcmModifyOperator(KaapanaBaseOperator):
@@ -25,14 +25,15 @@ class DcmModifyOperator(KaapanaBaseOperator):
 
     execution_timeout = timedelta(seconds=60)
 
-    def __init__(self,
-                 dag,
-                 dicom_tags_to_modify, # eg: "(0008,0016)=1.2.840.10008.5.1.4.1.1.88.11;(0008,0017)=1.2.840.10008.5.1.4.1.1.88.11;(0008,0018)=1.2.840.10008.5.1.4.1.1.88.11"
-                 name="DcmModify",
-                 env_vars={},
-                 execution_timeout=execution_timeout,
-                 **kwargs
-                 ):
+    def __init__(
+        self,
+        dag,
+        dicom_tags_to_modify,  # eg: "(0008,0016)=1.2.840.10008.5.1.4.1.1.88.11;(0008,0017)=1.2.840.10008.5.1.4.1.1.88.11;(0008,0018)=1.2.840.10008.5.1.4.1.1.88.11"
+        name="DcmModify",
+        env_vars={},
+        execution_timeout=execution_timeout,
+        **kwargs,
+    ):
         """
         :param dicom_tags_to_modify: List of all DICOM tags which should be modified in given DICOM file. Specify using the following syntax: eg: "(0008,0016)=1.2.840.10008.5.1.4.1.1.88.11;(0008,0017)=1.2.840.10008.5.1.4.1.1.88.11; ... .
         """
@@ -51,5 +52,5 @@ class DcmModifyOperator(KaapanaBaseOperator):
             keep_parallel_id=False,
             env_vars=env_vars,
             ram_mem_mb=100,
-            **kwargs
+            **kwargs,
         )

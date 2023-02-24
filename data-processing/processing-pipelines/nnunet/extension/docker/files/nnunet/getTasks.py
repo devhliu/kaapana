@@ -1,7 +1,7 @@
 import json
 import os
 from glob import glob
-from os.path import join, basename, dirname, normpath, exists
+from os.path import join, basename, normpath, exists
 
 
 def get_dataset_json(model_path, installed_task):
@@ -46,19 +46,27 @@ def get_dataset_json(model_path, installed_task):
 
     return dataset_json
 
+
 def get_available_pretrained_tasks(af_home_path):
     tasks_json_path = join(af_home_path, "dags", "nnunet", "nnunet_tasks.json")
     with open(tasks_json_path) as f:
         tasks = json.load(f)
-    available_pretrained_task_names = [*{k: v for (k, v) in tasks.items() if "supported" in tasks[k] and tasks[k]["supported"]}]
+    available_pretrained_task_names = [
+        *{k: v for (k, v) in tasks.items() if "supported" in tasks[k] and tasks[k]["supported"]}
+    ]
     return tasks, available_pretrained_task_names
+
 
 def get_installed_tasks(af_home_path):
     installed_tasks = {}
     installed_models_path = join("/models", "nnUNet")
     if not exists(installed_models_path):
         return installed_tasks
-    installed_models = [basename(normpath(f.path)) for f in os.scandir(installed_models_path) if f.is_dir() and "ensembles" not in f.name]
+    installed_models = [
+        basename(normpath(f.path))
+        for f in os.scandir(installed_models_path)
+        if f.is_dir() and "ensembles" not in f.name
+    ]
     for installed_model in installed_models:
         model_path = join(installed_models_path, installed_model)
         installed_tasks_dirs = [basename(normpath(f.path)) for f in os.scandir(model_path) if f.is_dir()]
@@ -75,12 +83,13 @@ def get_installed_tasks(af_home_path):
                     "supported": True,
                     "info": dataset_json["info"] if "info" in dataset_json else "N/A",
                     "url": dataset_json["url"] if "url" in dataset_json else "N/A",
-                    "task_url": dataset_json["task_url"] if "task_url" in dataset_json else "N/A"
+                    "task_url": dataset_json["task_url"] if "task_url" in dataset_json else "N/A",
                 }
             if installed_model not in installed_tasks[installed_task]["model"]:
                 installed_tasks[installed_task]["model"].append(installed_model)
                 installed_tasks[installed_task]["model"].sort()
     return installed_tasks
+
 
 def get_tasks():
     af_home_path = "/root/airflow"
