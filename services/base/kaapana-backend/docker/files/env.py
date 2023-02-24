@@ -1,18 +1,20 @@
+import os
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from alembic import context
-import os
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-SERVICES_NAMESPACE = os.getenv('SERVICES_NAMESPACE', None)
+SERVICES_NAMESPACE = os.getenv("SERVICES_NAMESPACE", None)
 assert SERVICES_NAMESPACE
 
 config = context.config
-config.set_main_option('sqlalchemy.url', f"postgresql://kaapanauser:kaapanapassword@kaapana-backend-postgres-service.{SERVICES_NAMESPACE}.svc:5432")
+config.set_main_option(
+    "sqlalchemy.url",
+    f"postgresql://kaapanauser:kaapanapassword@kaapana-backend-postgres-service.{SERVICES_NAMESPACE}.svc:5432",
+)
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
@@ -20,8 +22,8 @@ fileConfig(config.config_file_name)
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-from app.experiments.models import *
 from app.database import Base
+
 target_metadata = Base.metadata
 # target_metadata = None
 
@@ -44,7 +46,7 @@ def run_migrations_offline():
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -70,9 +72,7 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

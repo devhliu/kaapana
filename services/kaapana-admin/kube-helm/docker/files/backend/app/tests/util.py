@@ -13,21 +13,37 @@ def get_extensions():
 
 def install_nnunet():
     print("########## installing nnunet...")
-    rinstall = requests.post("http://localhost:5000/helm-install-chart", json={
-        "name": "nnunet-workflow",
-        "version": "03-22",
-        "keywords": ["kaapanaworkflow"]
-    })
-    assert str(rinstall.status_code)[0] == "2", "/helm-install-chart did not respond with right status code, got {0} instead".format(rinstall.status_code)
+    rinstall = requests.post(
+        "http://localhost:5000/helm-install-chart",
+        json={
+            "name": "nnunet-workflow",
+            "version": "03-22",
+            "keywords": ["kaapanaworkflow"],
+        },
+    )
+    assert (
+        str(rinstall.status_code)[0] == "2"
+    ), "/helm-install-chart did not respond with right status code, got {0} instead".format(
+        rinstall.status_code
+    )
     print(rinstall.text)
 
 
 def delete_nnunet():
     print("########## deleting nnunet...")
-    rdel = requests.post("http://localhost:5000/helm-delete-chart", json={
-        "helm_command_addons": "",
-        "release_name": "nnunet-workflow",
-        "release_version": "03-22"
-    })
-    assert str(rdel.status_code)[0] == "2", "/helm-delete-chart did not respond with right status code, got {0} instead".format(rdel.status_code)
-    assert rdel.text == "Successfully uninstalled nnunet-workflow", "/helm-delete-chart returned different response {0}".format(rdel.text)
+    rdel = requests.post(
+        "http://localhost:5000/helm-delete-chart",
+        json={
+            "helm_command_addons": "",
+            "release_name": "nnunet-workflow",
+            "release_version": "03-22",
+        },
+    )
+    assert (
+        str(rdel.status_code)[0] == "2"
+    ), "/helm-delete-chart did not respond with right status code, got {0} instead".format(
+        rdel.status_code
+    )
+    assert (
+        rdel.text == "Successfully uninstalled nnunet-workflow"
+    ), "/helm-delete-chart returned different response {0}".format(rdel.text)

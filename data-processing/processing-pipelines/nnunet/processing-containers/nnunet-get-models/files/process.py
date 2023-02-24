@@ -1,28 +1,27 @@
-import sys
+import glob
 import os
+import time
 import urllib.request
 import zipfile
-import time
-import glob
 from datetime import datetime
+from os.path import join, basename, normpath
 from pathlib import Path
 from shutil import rmtree
-from os.path import join, basename, normpath
 
 processed_count = 0
 max_retries = 3
 max_hours_since_creation = 3
 
-workflow_dir = os.getenv('WORKFLOW_DIR', "data")
-output_dir = os.getenv('OPERATOR_OUT_DIR', "/models")
+workflow_dir = os.getenv("WORKFLOW_DIR", "data")
+output_dir = os.getenv("OPERATOR_OUT_DIR", "/models")
 
-target_level = os.getenv('TARGET_LEVEL', "default")
+target_level = os.getenv("TARGET_LEVEL", "default")
 
-task_ids = os.getenv('TASK', "NONE")
+task_ids = os.getenv("TASK", "NONE")
 task_ids = None if task_ids == "NONE" else task_ids
-model = os.getenv('MODEL', "NONE")
+model = os.getenv("MODEL", "NONE")
 model = None if model == "NONE" else model
-mode = os.getenv('MODE', "install_pretrained")
+mode = os.getenv("MODE", "install_pretrained")
 
 print("# Starting GetModelOperator ...")
 print("#")
@@ -34,12 +33,23 @@ print(f"# target_level: {target_level}")
 print("#")
 print("#")
 
+
 def check_dl_running(model_path_dl_running, model_path, wait=True):
     if os.path.isfile(model_path_dl_running):
-        hours_since_creation = int((datetime.now() - datetime.fromtimestamp(os.path.getmtime(model_path_dl_running))).total_seconds()/3600)
+        hours_since_creation = int(
+            (
+                datetime.now()
+                - datetime.fromtimestamp(os.path.getmtime(model_path_dl_running))
+            ).total_seconds()
+            / 3600
+        )
         if hours_since_creation > max_hours_since_creation:
             print("Download lock-file present! -> waiting until it is finished!")
-            print("File older than {} hours! -> removing and triggering download!".format(max_hours_since_creation))
+            print(
+                "File older than {} hours! -> removing and triggering download!".format(
+                    max_hours_since_creation
+                )
+            )
             delete_file(model_path_dl_running)
             return False
 
@@ -68,9 +78,18 @@ if mode == "install_zip":
     print("# Search for model-zip-files...")
     print("------------------------------------")
     zip_files = []
-    batch_folders = sorted([f for f in glob.glob(os.path.join('/', os.environ['WORKFLOW_DIR'], os.environ['BATCH_NAME'], '*'))])
+    batch_folders = sorted(
+        [
+            f
+            for f in glob.glob(
+                os.path.join(
+                    "/", os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"], "*"
+                )
+            )
+        ]
+    )
     for batch_element_dir in batch_folders:
-        zip_dir_path = os.path.join(batch_element_dir, os.environ['OPERATOR_IN_DIR'])
+        zip_dir_path = os.path.join(batch_element_dir, os.environ["OPERATOR_IN_DIR"])
         zip_files = glob.glob(os.path.join(zip_dir_path, "*.zip"), recursive=True)
 
         if len(zip_files) == 0:
@@ -107,12 +126,14 @@ if mode == "install_zip":
             print("Could not extract model: {}".format(target_file))
             print("Target dir: {}".format(models_dir))
             print("Abort.")
-            print('MSG: ' + str(e))
+            print("MSG: " + str(e))
             exit(1)
 
     if processed_count == 0:
         print("# Searching for zip-files on batch-level...")
-        batch_input_dir = os.path.join('/', os.environ['WORKFLOW_DIR'], os.environ['OPERATOR_IN_DIR'])
+        batch_input_dir = os.path.join(
+            "/", os.environ["WORKFLOW_DIR"], os.environ["OPERATOR_IN_DIR"]
+        )
         zip_files = glob.glob(os.path.join(batch_input_dir, "*.zip"), recursive=True)
 
         if len(zip_files) == 0:
@@ -131,7 +152,7 @@ if mode == "install_zip":
             print("Could not extract model: {}".format(target_file))
             print("Target dir: {}".format(models_dir))
             print("Abort.")
-            print('MSG: ' + str(e))
+            print("MSG: " + str(e))
             exit(1)
 
     print("# ✓ successfully extracted model into model-dir.")
@@ -186,7 +207,7 @@ elif mode == "install_pretrained":
         print("TASK: {}".format(task_id))
         print("MODEL: {}".format(model))
 
-        tasks_found = glob.glob(join(models_dir,"**",task_id),recursive=True)
+        tasks_found = glob.glob(join(models_dir, "**", task_id), recursive=True)
         if len(tasks_found) > 0:
             print("Model {} found!".format(task_id))
             continue
@@ -195,13 +216,21 @@ elif mode == "install_pretrained":
 
         model_path_dl_running = os.path.join(models_dir, "dl_{}.txt".format(task_id))
         wait = True if len(task_ids) == 1 else False
-        if check_dl_running(model_path_dl_running=model_path_dl_running, model_path=model_path, wait=wait):
+        if check_dl_running(
+            model_path_dl_running=model_path_dl_running,
+            model_path=model_path,
+            wait=wait,
+        ):
             continue
 
         file_name = "{}.zip".format(task_id)
-        model_url = "https://zenodo.org/record/4003545/files/{}?download=1".format(file_name)
+        model_url = "https://zenodo.org/record/4003545/files/{}?download=1".format(
+            file_name
+        )
 
-        output_dir = os.path.join('/', os.getenv("WORKFLOW_DIR", "tmp"), os.getenv("OPERATOR_OUT_DIR", ""))
+        output_dir = os.path.join(
+            "/", os.getenv("WORKFLOW_DIR", "tmp"), os.getenv("OPERATOR_OUT_DIR", "")
+        )
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
@@ -217,7 +246,7 @@ elif mode == "install_pretrained":
             except Exception as e:
                 print("Could not download model: {}".format(model_url))
                 print("Abort.")
-                print('MSG: ' + str(e))
+                print("MSG: " + str(e))
                 delete_file(target_file)
 
         if try_count >= max_retries:
@@ -243,7 +272,7 @@ elif mode == "install_pretrained":
             print("Could not extract model: {}".format(zipfile))
             print("Target dir: {}".format(models_dir))
             print("Abort.")
-            print('MSG: ' + str(e))
+            print("MSG: " + str(e))
             delete_file(target_file)
             delete_file(model_path_dl_running)
             continue
@@ -281,11 +310,15 @@ elif mode == "uninstall":
     models_dir = "/models/nnUNet"
 
     print(f"Un-installing TASK: {task_ids}")
-    installed_models = [basename(normpath(f.path)) for f in os.scandir(models_dir) if f.is_dir()]
+    installed_models = [
+        basename(normpath(f.path)) for f in os.scandir(models_dir) if f.is_dir()
+    ]
 
     for installed_model in installed_models:
         model_path = join(models_dir, installed_model)
-        installed_tasks_dirs = [basename(normpath(f.path)) for f in os.scandir(model_path) if f.is_dir()]
+        installed_tasks_dirs = [
+            basename(normpath(f.path)) for f in os.scandir(model_path) if f.is_dir()
+        ]
         for installed_task in installed_tasks_dirs:
             if installed_task.lower() == task_ids.lower():
                 task_path = join(models_dir, installed_model, installed_task)

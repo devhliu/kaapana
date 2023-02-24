@@ -1,22 +1,23 @@
-from os.path import basename, dirname, join
-import uvicorn
 import logging
+from os.path import dirname, join
 
-from fastapi import APIRouter, FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+from fastapi import FastAPI
 from fastapi.logger import logger
+from fastapi.staticfiles import StaticFiles
 
-from utils import helm_search_repo
-from routes import router
-from repeat_timer import RepeatedTimer
 from config import settings
 from helm_helper import get_extensions_list
+from routes import router
 
 app = FastAPI(title="Kube-Helm API", root_path=settings.application_root)
 
 app.include_router(router)
-app.mount("/static", StaticFiles(directory=join(dirname(str(__file__)), "static")), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=join(dirname(str(__file__)), "static")),
+    name="static",
+)
 
 
 @app.on_event("startup")
@@ -33,14 +34,19 @@ async def startup_event():
     elif log_level == "CRITICAL":
         log_level = logging.CRITICAL
     else:
-        logging.error(f"Unknown log-level: {settings.log_level} -> Setting log-level to 'INFO'")
+        logging.error(
+            f"Unknown log-level: {settings.log_level} -> Setting log-level to 'INFO'"
+        )
         log_level = logging.INFO
 
-    gunicorn_logger = logging.getLogger('gunicorn.error')
+    gunicorn_logger = logging.getLogger("gunicorn.error")
     logger.handlers = gunicorn_logger.handlers
     logger.setLevel(log_level)
-    logger.info("FastAPI logger level set to {0}".format(logging.getLevelName(log_level)))
+    logger.info(
+        "FastAPI logger level set to {0}".format(logging.getLevelName(log_level))
+    )
     logger.info("settings {0}".format(settings))
+
 
 if __name__ == "__main__":
     get_extensions_list()

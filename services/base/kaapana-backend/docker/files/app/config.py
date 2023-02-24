@@ -1,5 +1,8 @@
-from pydantic import BaseSettings
 import os
+
+from pydantic import BaseSettings
+
+
 class Settings(BaseSettings):
     """
     Configuration of the application
@@ -11,7 +14,7 @@ class Settings(BaseSettings):
 
     hostname: str
     instance_name: str
-    
+
     prometheus_url: str
 
     minio_url: str
@@ -21,8 +24,9 @@ class Settings(BaseSettings):
     keycloak_url: str
     keycloak_admin_username: str
     keycloak_admin_password: str
-    
+
     airflow_url: str = os.getenv("AIRFLOW_URL")
     services_namespace: str = os.getenv("SERVICES_NAMESPACE")
+
 
 settings = Settings()

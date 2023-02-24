@@ -1,10 +1,13 @@
-from airflow.utils.log.logging_mixin import LoggingMixin
-from airflow.utils.dates import days_ago
 from datetime import timedelta
+
 from airflow.models import DAG
-from kaapana.operators.LocalGetInputDataOperator import LocalGetInputDataOperator
+from airflow.utils.dates import days_ago
+from airflow.utils.log.logging_mixin import LoggingMixin
 from kaapana.operators.DcmSendOperator import DcmSendOperator
-from kaapana.operators.LocalWorkflowCleanerOperator import LocalWorkflowCleanerOperator
+from kaapana.operators.LocalGetInputDataOperator import \
+    LocalGetInputDataOperator
+from kaapana.operators.LocalWorkflowCleanerOperator import \
+    LocalWorkflowCleanerOperator
 
 log = LoggingMixin().log
 
@@ -21,21 +24,21 @@ ui_forms = {
                 "description": "Specify the url/IP of the DICOM receiver.",
                 "type": "string",
                 "default": pacs_host,
-                "required": True
+                "required": True,
             },
             "port": {
                 "title": "Receiver port",
                 "description": "Specify the port of the DICOM receiver.",
                 "type": "integer",
                 "default": pacs_port,
-                "required": True
+                "required": True,
             },
             "aetitle": {
                 "title": "Receiver AE-title",
                 "description": "Specify the port of the DICOM receiver.",
                 "type": "string",
                 "default": ae_title,
-                "required": True
+                "required": True,
             },
             "single_execution": {
                 "title": "single execution",
@@ -43,26 +46,26 @@ ui_forms = {
                 "type": "boolean",
                 "default": True,
                 "readOnly": False,
-            }
-        }
+            },
+        },
     }
 }
 
 args = {
-    'ui_visible': True,
-    'ui_forms': ui_forms,
-    'owner': 'kaapana',
-    'start_date': days_ago(0),
-    'retries': 0,
-    'retry_delay': timedelta(seconds=30)
+    "ui_visible": True,
+    "ui_forms": ui_forms,
+    "owner": "kaapana",
+    "start_date": days_ago(0),
+    "retries": 0,
+    "retry_delay": timedelta(seconds=30),
 }
 
 dag = DAG(
-    dag_id='send-dicom',
+    dag_id="send-dicom",
     default_args=args,
     concurrency=10,
     max_active_runs=10,
-    schedule_interval=None
+    schedule_interval=None,
 )
 
 get_input = LocalGetInputDataOperator(dag=dag)
@@ -72,7 +75,7 @@ dcm_send = DcmSendOperator(
     ae_title=ae_title,
     pacs_host=pacs_host,
     pacs_port=pacs_port,
-    level='element',
+    level="element",
     enable_proxy=True,
     no_proxy=".svc"
     # no_proxy="ctp-dicom-service.flow,ctp-dicom-service.flow.svc,dcm4chee-service.store,dcm4chee-service.store.svc"

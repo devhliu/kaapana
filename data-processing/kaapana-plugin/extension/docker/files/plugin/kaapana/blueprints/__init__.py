@@ -1,21 +1,17 @@
 # This is the class you derive to create a plugin
-from airflow.plugins_manager import AirflowPlugin
-
-from flask import Blueprint
-from flask_admin import BaseView, expose
-from flask_admin.base import MenuLink
-from flask_appbuilder import BaseView as AppBuilderBaseView
-
+from airflow.executors.base_executor import BaseExecutor
 # Importing base classes that we need to derive
 from airflow.hooks.base_hook import BaseHook
-from airflow.models import BaseOperator, Variable
+from airflow.models import BaseOperator
+from airflow.plugins_manager import AirflowPlugin
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
-from airflow.executors.base_executor import BaseExecutor
+from flask_admin import BaseView, expose
 from kaapana.blueprints.kaapana_api import kaapanaApi
-from kaapana import operators
+
 
 class PluginHook(BaseHook):
     pass
+
 
 # Will show up under airflow.operators.test_plugin.PluginOperator
 
@@ -33,17 +29,19 @@ class PluginSensorOperator(BaseSensorOperator):
 class PluginExecutor(BaseExecutor):
     pass
 
+
 # Will show up under airflow.macros.test_plugin.plugin_macro
 
 
 def plugin_macro():
     pass
 
+
 # Creating a flask admin BaseView
 
 
 class TestView(BaseView):
-    @expose('/')
+    @expose("/")
     def test(self):
         # in this example, put your test_plugin/test.html template at airflow/plugins/templates/test_plugin/test.html
         return self.render("kaapana/home.html", content="Hello galaxy!")
@@ -73,10 +71,12 @@ class TestView(BaseView):
 #                         "view": jip_dags_appbuilder_view}
 
 # Creating a flask appbuilder Menu Item
-appbuilder_mitem = {"name": "Google",
-                    "category": "Search",
-                    "category_icon": "fa-th",
-                    "href": "https://www.google.com"}
+appbuilder_mitem = {
+    "name": "Google",
+    "category": "Search",
+    "category_icon": "fa-th",
+    "href": "https://www.google.com",
+}
 
 jip_operators = [
     PluginOperator,
