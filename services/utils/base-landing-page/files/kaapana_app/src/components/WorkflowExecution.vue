@@ -1,6 +1,6 @@
 
 <template lang="pug">
-v-dialog(v-model='dialogOpen' max-width='600px')
+v-dialog(v-model='dialogOpen' max-width='650px')
   template(v-slot:activator='{ on, attrs }')
     v-btn(color="primary" v-bind='attrs' v-on='on' dark) Experiment Execution
   v-card
@@ -16,23 +16,23 @@ v-dialog(v-model='dialogOpen' max-width='600px')
               v-select(v-model='instance_names' :items='available_instance_names' label='Instance names' multiple='' chips='' hint='On which nodes do you want to execute the workflow')
             v-col(cols='12') 
              
-              <v-radio-group v-model="radio_isolation" column>
-                <template v-slot:label>
-                  <div>Do you want to run your workflow in <strong>Isolation ?</strong></div> 
-                  //-v-icon mdi-information
+              //- <v-radio-group v-model="radio_isolation" column>
+              //-   <template v-slot:label>
+              //-     <div>Do you want to run your workflow in <strong>Isolation ?</strong></div> 
+              //-     //-v-icon mdi-information
               
-                </template>
-                <v-radio value="No">
-                  <template v-slot:label>
-                    <div>No</div>
-                  </template>
-                </v-radio>
-                <v-radio value="Yes">
-                  <template v-slot:label>
-                    <div>Yes</div>
-                  </template>
-                </v-radio>
-              </v-radio-group>
+              //-   </template>
+              //-   <v-radio value="No">
+              //-     <template v-slot:label>
+              //-       <div>No</div>
+              //-     </template>
+              //-   </v-radio>
+              //-   <v-radio value="Yes">
+              //-     <template v-slot:label>
+              //-       <div>Yes</div>
+              //-     </template>
+              //-   </v-radio>
+              //- </v-radio-group>
             v-col(cols='12') 
              <v-radio-group v-model="workflow_type" row>
                <template v-slot:label>
@@ -44,14 +44,14 @@ v-dialog(v-model='dialogOpen' max-width='600px')
                    <div>DAG</div>
                  </template>
                </v-radio>
-               <v-radio v-if="radio_isolation!=='No'" value="shell_workflow">
+               <v-radio value="shell_workflow">
                  <template v-slot:label>
-                   <div>Shell</div>
+                   <div>Shell (isolation)</div>
                  </template>
                </v-radio>
-               <v-radio v-if="radio_isolation!=='No'" value="container_workflow">
+               <v-radio value="container_workflow">
                  <template v-slot:label>
-                   <div>Container</div>
+                   <div>Container (isolation)</div>
                  </template>
                </v-radio>
              </v-radio-group>
@@ -345,7 +345,7 @@ export default {
     },
     submitWorkflow() {
 
-      if (this.radio_isolation !== "No") {
+      if ((this.workflow_type == "shell_workflow") || (this.workflow_type == "container_workflow" )) {
         console.log("TFDA Main Dag Called"
         );
         

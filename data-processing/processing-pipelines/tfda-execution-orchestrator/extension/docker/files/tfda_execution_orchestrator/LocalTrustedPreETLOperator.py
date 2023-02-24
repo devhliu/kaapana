@@ -25,7 +25,8 @@ class LocalTrustedPreETLOperator(KaapanaPythonBaseOperator):
         operator_dir = os.path.dirname(os.path.abspath(__file__))
         user_experiment_path = os.path.join(operator_dir, "algorithm_files", config_params["workflow_type"], config_params["experiment_name"])
         Path(user_experiment_path).mkdir(parents=True, exist_ok=True)
-        if config_params["workflow_type"] == "shell_workflow":            
+        if config_params["workflow_type"] == "shell_workflow": 
+            logging.debug("Downloading archive from provided URL for shell-workflow...")           
             download_url = config_params["download_url"]
             try:
                 response = requests.get(download_url)
@@ -40,7 +41,7 @@ class LocalTrustedPreETLOperator(KaapanaPythonBaseOperator):
             container_registry_user = config_params['container_registry_user']
             container_registry_pwd = config_params['container_registry_pwd']
             container_name_version = config_params['container_name_version']
-            logging.info("Logging into container registry!!!")
+            logging.info("Logging into container registry...")
             command = ["skopeo", "login", "--username", f"{container_registry_user}", "--password", f"{container_registry_pwd}", f"{container_registry_url}"]
             return_code = self.run_command(command=command)
             if return_code == 0:
