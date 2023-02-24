@@ -127,6 +127,10 @@ if __name__=='__main__':
     ### Add client 
     file = "realm_objects/kaapana-client.json"
     host = os.environ["HOSTNAME"]
-    keycloak.post_client(file, redirectUris=[ "/oauth2/callback", f"https://{host}:443/minio-console/oauth_callback/" ])
+    https_port = os.environ["HTTPS_PORT"]
+    if int(https_port) != 443:
+        keycloak.post_client(file, redirectUris=[ "/oauth2/callback", f"https://{host}:{https_port}/minio-console/oauth_callback/" ])
+    else:
+        keycloak.post_client(file, redirectUris=[ "/oauth2/callback", f"https://{host}/minio-console/oauth_callback/" ])
 
 
