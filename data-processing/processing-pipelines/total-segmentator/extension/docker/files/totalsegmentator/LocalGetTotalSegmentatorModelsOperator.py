@@ -5,8 +5,9 @@ import zipfile
 from pathlib import Path
 
 import requests
+from kaapana.operators.KaapanaPythonBaseOperator import \
+    KaapanaPythonBaseOperator
 
-from kaapana.operators.KaapanaPythonBaseOperator import KaapanaPythonBaseOperator
 
 class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
     """
@@ -15,11 +16,10 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
 
     @staticmethod
     def download_url_and_unpack(url, config_dir, task_id):
-
         # helps to solve incomplete read erros
         # https://stackoverflow.com/questions/37816596/restrict-request-to-only-ask-for-http-1-0-to-prevent-chunking-error
         http.client.HTTPConnection._http_vsn = 10
-        http.client.HTTPConnection._http_vsn_str = 'HTTP/1.0'
+        http.client.HTTPConnection._http_vsn_str = "HTTP/1.0"
 
         tempfile = config_dir / f"{task_id}.zip"
 
@@ -27,13 +27,13 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
             proxies = os.getenv("PROXY", None)
             if proxies is not None:
                 proxies = {
-                    'http': proxies,
-                    'https': proxies,
-                    'no_proxy': '.svc,.svc.cluster,.svc.cluster.local'
+                    "http": proxies,
+                    "https": proxies,
+                    "no_proxy": ".svc,.svc.cluster,.svc.cluster.local",
                 }
 
             st = time.time()
-            with open(tempfile, 'wb') as f:
+            with open(tempfile, "wb") as f:
                 # session = requests.Session()  # making it slower
                 with requests.get(url, proxies=proxies, stream=True) as r:
                     r.raise_for_status()
@@ -45,7 +45,7 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
 
             print("Download finished. Extracting...")
             # call(['unzip', '-o', '-d', network_training_output_dir, tempfile])
-            with zipfile.ZipFile(config_dir / f"{task_id}.zip", 'r') as zip_f:
+            with zipfile.ZipFile(config_dir / f"{task_id}.zip", "r") as zip_f:
                 zip_f.extractall(config_dir)
             print(f"  downloaded in {time.time() - st:.2f}s")
         except Exception as e:
@@ -55,7 +55,7 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
                 os.remove(tempfile)
 
     @staticmethod
-    def download_pretrained_weights(task_id:int, config_dir:Path, force_download: bool = False):
+    def download_pretrained_weights(task_id: int, config_dir: Path, force_download: bool = False):
         if task_id == 251:
             weights_path = config_dir / "Task251_TotalSegmentator_part1_organs_1139subj"
             WEIGHTS_URL = "https://zenodo.org/record/6802342/files/Task251_TotalSegmentator_part1_organs_1139subj.zip?download=1"
@@ -88,10 +88,14 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
             WEIGHTS_URL = "https://zenodo.org/record/7079161/files/Task150_icb_v0.zip?download=1"
         elif task_id == 260:
             weights_path = config_dir / "Task260_hip_implant_71subj"
-            WEIGHTS_URL = "https://zenodo.org/record/7234263/files/Task260_hip_implant_71subj.zip?download=1"
+            WEIGHTS_URL = (
+                "https://zenodo.org/record/7234263/files/Task260_hip_implant_71subj.zip?download=1"
+            )
         elif task_id == 503:
             weights_path = config_dir / "Task503_cardiac_motion"
-            WEIGHTS_URL = "https://zenodo.org/record/7271576/files/Task503_cardiac_motion.zip?download=1"
+            WEIGHTS_URL = (
+                "https://zenodo.org/record/7271576/files/Task503_cardiac_motion.zip?download=1"
+            )
         elif task_id == 517:
             weights_path = config_dir / "Task517_Bones40"
             WEIGHTS_URL = "TODO"
@@ -99,7 +103,9 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
         if WEIGHTS_URL and (not weights_path.exists() or force_download):
             print(f"Downloading pretrained weights for Task {task_id} (~230MB) ...")
             weights_path.mkdir(exist_ok=True, parents=True)
-            LocalGetTotalSegmentatorModelsOperator.download_url_and_unpack(WEIGHTS_URL, config_dir, task_id)
+            LocalGetTotalSegmentatorModelsOperator.download_url_and_unpack(
+                WEIGHTS_URL, config_dir, task_id
+            )
 
     @staticmethod
     def start():
@@ -107,20 +113,18 @@ class LocalGetTotalSegmentatorModelsOperator(KaapanaPythonBaseOperator):
         config_dir = Path("/models/total_segmentator/nnUNet/3d_fullres")
 
         config_dir.mkdir(exist_ok=True, parents=True)
-        for task_id in [251, 252, 253, 254, 255]:  # [251, 252, 253, 254, 255, 256, 258, 150, 260, 503]:
+        for task_id in [
+            251,
+            252,
+            253,
+            254,
+            255,
+        ]:  # [251, 252, 253, 254, 255, 256, 258, 150, 260, 503]:
             LocalGetTotalSegmentatorModelsOperator.download_pretrained_weights(
-                task_id,
-                config_dir,
-                force_download=False
+                task_id, config_dir, force_download=False
             )
 
-    def __init__(self,
-                 dag,
-                 **kwargs):
-
+    def __init__(self, dag, **kwargs):
         super().__init__(
-            dag=dag,
-            name="get-total-segmentator-models",
-            python_callable=self.start,
-            **kwargs
+            dag=dag, name="get-total-segmentator-models", python_callable=self.start, **kwargs
         )

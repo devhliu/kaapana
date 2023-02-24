@@ -1,9 +1,11 @@
-from time import time
 import json
-import semver
+from os.path import join, dirname, basename, exists
+from time import time
+
 import networkx as nx
-from os.path import join, dirname, basename, exists, isfile, isdir
+import semver
 from git import Repo
+
 
 class BuildUtils:
     max_build_rounds = 4
@@ -34,7 +36,7 @@ class BuildUtils:
     configuration_check = None
     configuration_check_severity_level = None
     thread_pool = None
-    
+
     platform_name = None
     platform_build_version = None
     platform_build_branch = None
@@ -60,10 +62,29 @@ class BuildUtils:
             chart_object.check_dependencies()
 
     @staticmethod
-    def init(kaapana_dir, build_dir, external_source_dirs, build_ignore_patterns, platform_filter, default_registry, http_proxy, logger, exit_on_error, enable_build_kit,
-             create_offline_installation, skip_push_no_changes, parallel_processes, include_credentials, registry_user, registry_pwd, push_to_microk8s, vulnerability_scan,
-             vulnerability_severity_level, configuration_check, configuration_check_severity_level):
-
+    def init(
+        kaapana_dir,
+        build_dir,
+        external_source_dirs,
+        build_ignore_patterns,
+        platform_filter,
+        default_registry,
+        http_proxy,
+        logger,
+        exit_on_error,
+        enable_build_kit,
+        create_offline_installation,
+        skip_push_no_changes,
+        parallel_processes,
+        include_credentials,
+        registry_user,
+        registry_pwd,
+        push_to_microk8s,
+        vulnerability_scan,
+        vulnerability_severity_level,
+        configuration_check,
+        configuration_check_severity_level,
+    ):
         BuildUtils.logger = logger
         BuildUtils.kaapana_dir = kaapana_dir
         BuildUtils.build_dir = build_dir
@@ -71,7 +92,7 @@ class BuildUtils:
         BuildUtils.default_registry = default_registry
         BuildUtils.http_proxy = http_proxy
         BuildUtils.external_source_dirs = external_source_dirs
-        BuildUtils.build_ignore_patterns = build_ignore_patterns        
+        BuildUtils.build_ignore_patterns = build_ignore_patterns
         BuildUtils.exit_on_error = exit_on_error
         BuildUtils.issues_list = []
 
@@ -101,13 +122,14 @@ class BuildUtils:
             repo_dir = dirname(repo_dir)
         assert repo_dir != "/"
 
-
         requested_repo = Repo(repo_dir)
         assert not requested_repo.bare
 
         if "modules" in requested_repo.common_dir:
             repo_name = basename(requested_repo.working_dir)
-            requested_repo = [Repo(x) for x in Repo(dirname(repo_dir)).submodules if x.name == repo_name]
+            requested_repo = [
+                Repo(x) for x in Repo(dirname(repo_dir)).submodules if x.name == repo_name
+            ]
             assert len(requested_repo) == 1
             requested_repo = requested_repo[0]
             last_commit = requested_repo.head.commit
@@ -140,7 +162,11 @@ class BuildUtils:
             entry_id = f"{name}:{version}"
 
             if "chart:" in entry:
-                unused_chart = [x_chart for x_key, x_chart in BuildUtils.charts_unused.items() if f"{x_chart.name}:{x_chart.repo_version}" == entry_id]
+                unused_chart = [
+                    x_chart
+                    for x_key, x_chart in BuildUtils.charts_unused.items()
+                    if f"{x_chart.name}:{x_chart.repo_version}" == entry_id
+                ]
                 if len(unused_chart) == 1:
                     del BuildUtils.charts_unused[unused_chart[0].name]
                     BuildUtils.logger.debug(f"{entry_id} removed from charts_unused!")
@@ -217,7 +243,7 @@ class BuildUtils:
         for container_id, container in BuildUtils.container_images_unused.items():
             BuildUtils.logger.debug(f"{container.tag}")
             unused_container.append(container.get_dict())
-        with open(unused_containers_json_path, 'w') as fp:
+        with open(unused_containers_json_path, "w") as fp:
             json.dump(unused_container, fp, indent=4)
 
         base_images_json_path = join(BuildUtils.build_dir, "build_base_images.json")
@@ -236,17 +262,18 @@ class BuildUtils:
                     child_tag = child_container.build_tag
                 else:
                     child_tag = f"Not build: {child_container.tag}"
-                    
+
                 if child_tag not in base_images[base_image_tag]:
                     base_images[base_image_tag][child_tag] = {}
-        
-        
+
         changed = True
         runs = 0
-        base_images = dict(sorted(base_images.items(),reverse=True, key=lambda item: len(item[1])))
+        base_images = dict(
+            sorted(base_images.items(), reverse=True, key=lambda item: len(item[1]))
+        )
         while changed and runs <= BuildUtils.max_build_rounds:
-            runs +=1 
-            del_tags = [] 
+            runs += 1
+            del_tags = []
             changed = False
             for base_image_tag, child_images in base_images.items():
                 if base_image_tag == "python:3.9.16-slim":
@@ -255,14 +282,19 @@ class BuildUtils:
                     if child_image_tag in base_images:
                         base_images[base_image_tag][child_image_tag] = base_images[child_image_tag]
                         del_tags.append(child_image_tag)
-            
+
             for del_tag in del_tags:
                 del base_images[del_tag]
                 changed = True
-        
 
-        base_images = dict(sorted(base_images.items(),reverse=True, key=lambda item: sum(len(v) for v in item[1].values())))
-        with open(base_images_json_path, 'w') as fp:
+        base_images = dict(
+            sorted(
+                base_images.items(),
+                reverse=True,
+                key=lambda item: sum(len(v) for v in item[1].values()),
+            )
+        )
+        with open(base_images_json_path, "w") as fp:
             json.dump(base_images, fp, indent=4)
 
         all_containers_json_path = join(BuildUtils.build_dir, "build_containers_all.json")
@@ -274,7 +306,7 @@ class BuildUtils:
             BuildUtils.logger.debug(f"{container.tag}")
             all_container.append(container.get_dict())
 
-        with open(all_containers_json_path, 'w') as fp:
+        with open(all_containers_json_path, "w") as fp:
             json.dump(all_container, fp, indent=4)
 
         all_charts_json_path = join(BuildUtils.build_dir, "build_charts_all.json")
@@ -286,7 +318,7 @@ class BuildUtils:
             BuildUtils.logger.debug(f"{chart.chart_id}")
             all_charts.append(chart.get_dict())
 
-        with open(all_charts_json_path, 'w') as fp:
+        with open(all_charts_json_path, "w") as fp:
             json.dump(all_charts, fp, indent=4)
 
         unused_charts_json_path = join(BuildUtils.build_dir, "build_charts_unused.json")
@@ -298,9 +330,10 @@ class BuildUtils:
             BuildUtils.logger.debug(f"{chart.chart_id}")
             unused_charts.append(chart.get_dict())
 
-        with open(unused_charts_json_path, 'w') as fp:
+        with open(unused_charts_json_path, "w") as fp:
             json.dump(unused_charts, fp, indent=4)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("Please use the 'start_build.py' script to launch the build-process.")
     exit(1)

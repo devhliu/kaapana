@@ -6,7 +6,7 @@ import numpy as np
 
 
 def create_pngs(
-        path_input_img: Path, path_input_seg: Path, path_output_dir: Path, all_slices=False
+    path_input_img: Path, path_input_seg: Path, path_output_dir: Path, all_slices=False
 ):
     """
 
@@ -26,7 +26,7 @@ def create_pngs(
 
     # Change voxels in 99 percentile to max_value
     percentile = np.percentile(img_arr, 99.9)
-    print(f'Percentile chosen: {percentile}')
+    print(f"Percentile chosen: {percentile}")
     img_arr[img_arr >= percentile] = percentile
 
     # Find relevant slice
@@ -35,7 +35,7 @@ def create_pngs(
     # mass_x, mass_y, mass_z are the list of x indices and y indices of mass pixels
     # slice with the most segmentations
     interesting_slice = np.argmax(np.bincount(mass_x))
-    print(f'>> Slice to be used for screenshot: {interesting_slice}')
+    print(f">> Slice to be used for screenshot: {interesting_slice}")
     # Slice image and seg accordingly
     img_arr_slice = img_arr[interesting_slice]
     seg_arr_slice = seg_arr[interesting_slice]
@@ -49,22 +49,19 @@ def create_pngs(
             windowMinimum=float(np.amin(img_slice)),
             windowMaximum=float(np.amax(img_slice)),
             outputMinimum=0.0,
-            outputMaximum=200.0
+            outputMaximum=200.0,
         ),
-        sitk.sitkUInt8
+        sitk.sitkUInt8,
     )
     # Overlay the segmentation using default color map and an alpha value
     res_img = sitk.LabelOverlay(
-        image=img_slice_255,
-        labelImage=seg_slice,
-        opacity=0.3, backgroundValue=0.0
+        image=img_slice_255, labelImage=seg_slice, opacity=0.3, backgroundValue=0.0
     )
     # Save
     output_path = os.path.join(
-        path_output_dir,
-        f'{path_input_seg.name.replace(".nii.gz", "")}.png'
+        path_output_dir, f'{path_input_seg.name.replace(".nii.gz", "")}.png'
     )
-    print(f'Writing file {output_path}')
+    print(f"Writing file {output_path}")
     sitk.WriteImage(res_img, output_path)
 
     # Save all slices
@@ -80,48 +77,40 @@ def create_pngs(
                     windowMinimum=float(np.amin(img_slice)),
                     windowMaximum=float(np.amax(img_slice)),
                     outputMinimum=0.0,
-                    outputMaximum=200.0
+                    outputMaximum=200.0,
                 ),
-                sitk.sitkUInt8
+                sitk.sitkUInt8,
             )
 
             # Overlay the segmentation using default color map and an alpha value
             res_img = sitk.LabelOverlay(
-                image=img_slice_255,
-                labelImage=seg_slice,
-                opacity=0.3,
-                backgroundValue=0.0
+                image=img_slice_255, labelImage=seg_slice, opacity=0.3, backgroundValue=0.0
             )
             # Save
             output_path = os.path.join(
-                path_output_dir,
-                f'{path_input_seg.name.replace(".nii.gz", "")}_{sl}.png'
+                path_output_dir, f'{path_input_seg.name.replace(".nii.gz", "")}_{sl}.png'
             )
-            print(f'Writing file {output_path}')
+            print(f"Writing file {output_path}")
             sitk.WriteImage(res_img, output_path)
 
 
 if __name__ == "__main__":
-    batch_folders = [*Path(os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"]).glob('*')]
+    batch_folders = [*Path(os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"]).glob("*")]
 
     for batch_element_dir in batch_folders:
-        seg_element_input_dir = batch_element_dir / os.environ['OPERATOR_IN_DIR']
-        orig_element_input_dir = batch_element_dir / os.environ['ORIG_IMAGE_OPERATOR_DIR']
-        element_output_dir = batch_element_dir / os.environ['OPERATOR_OUT_DIR']
+        seg_element_input_dir = batch_element_dir / os.environ["OPERATOR_IN_DIR"]
+        orig_element_input_dir = batch_element_dir / os.environ["ORIG_IMAGE_OPERATOR_DIR"]
+        element_output_dir = batch_element_dir / os.environ["OPERATOR_OUT_DIR"]
 
         element_output_dir.mkdir(exist_ok=True)
 
-        orig_input_element = list(orig_element_input_dir.glob('*.nii.gz'))[0]
-        seg_element = list(seg_element_input_dir.glob('*.nii.gz'))[0]
+        orig_input_element = list(orig_element_input_dir.glob("*.nii.gz"))[0]
+        seg_element = list(seg_element_input_dir.glob("*.nii.gz"))[0]
 
         # The processing algorithm
         print(
-            f'Creating a segmentation thumbnail for input '
-            f'{orig_input_element} and seg {seg_element}.'
+            f"Creating a segmentation thumbnail for input "
+            f"{orig_input_element} and seg {seg_element}."
         )
 
-        create_pngs(
-            orig_input_element,
-            seg_element,
-            element_output_dir
-        )
+        create_pngs(orig_input_element, seg_element, element_output_dir)

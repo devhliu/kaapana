@@ -1,17 +1,17 @@
+import json
 import os
+import shutil
+from glob import glob
 from os import getenv
 from os.path import join, exists, dirname, basename
-from glob import glob
 from pathlib import Path
-import json
-import shutil
-from dcmrtstruct2nii import dcmrtstruct2nii, list_rt_structs
+
+from dcmrtstruct2nii import dcmrtstruct2nii
 
 # For multiprocessing -> usually you should scale via multiple containers!
-from multiprocessing.pool import ThreadPool
 
 # For shell-execution
-from subprocess import PIPE, run
+
 execution_timeout = 10
 
 # Counter to check if smth has been processed
@@ -27,16 +27,21 @@ def generate_meta_info(result_dir):
         if "image.nii.gz" in result:
             continue
         target_dir = dirname(dirname(result))
-        extracted_label = basename(result).replace("mask_","").replace(".nii.gz","")
+        extracted_label = basename(result).replace("mask_", "").replace(".nii.gz", "")
         print("#")
-        if seg_filter is not None and extracted_label.lower().replace(',',' ').replace(' ','') not in seg_filter:
-            print(f"# extracted_label {extracted_label.lower().replace(',',' ').replace(' ','')} not in filters {seg_filter} -> ignoring")
+        if (
+            seg_filter is not None
+            and extracted_label.lower().replace(",", " ").replace(" ", "") not in seg_filter
+        ):
+            print(
+                f"# extracted_label {extracted_label.lower().replace(',',' ').replace(' ','')} not in filters {seg_filter} -> ignoring"
+            )
             continue
         print("#")
         file_id = f"{basename(result).split('_')[0]}_{seg_count}"
         label_id = 255
-        label_string = f"--{label_id}--{extracted_label}.nii.gz"    
-        new_filename = join(target_dir,f"{file_id}{label_string}")
+        label_string = f"--{label_id}--{extracted_label}.nii.gz"
+        new_filename = join(target_dir, f"{file_id}{label_string}")
         print("#")
         print("#")
         print(f"# result:          {result}")
@@ -47,22 +52,23 @@ def generate_meta_info(result_dir):
         print(f"# new_filename:    {new_filename}")
         print("#")
 
-        shutil.move(result,new_filename)
+        shutil.move(result, new_filename)
 
         meta_temlate = {
             "segmentAttributes": [
-            [{
-                "SegmentLabel": extracted_label.replace('-',' '),
-                "labelID": label_id,
-            }]
-
+                [
+                    {
+                        "SegmentLabel": extracted_label.replace("-", " "),
+                        "labelID": label_id,
+                    }
+                ]
             ]
         }
-        
-        meta_path=join(dirname(new_filename),f"{file_id}-meta.json")
-        with open(meta_path, "w", encoding='utf-8') as jsonData:
+
+        meta_path = join(dirname(new_filename), f"{file_id}-meta.json")
+        with open(meta_path, "w", encoding="utf-8") as jsonData:
             json.dump(meta_temlate, jsonData, indent=4, sort_keys=True, ensure_ascii=True)
-    
+
     shutil.rmtree(result_dir)
 
 
@@ -82,9 +88,9 @@ batch_name = getenv("BATCH_NAME", "None")
 batch_name = batch_name if batch_name.lower() != "none" else None
 assert batch_name is not None
 
-seg_filter = os.environ.get('SEG_FILTER', "")
+seg_filter = os.environ.get("SEG_FILTER", "")
 if seg_filter != "":
-    seg_filter = seg_filter.lower().replace(" ","").split(",")
+    seg_filter = seg_filter.lower().replace(" ", "").split(",")
     print(f"Set filters: {seg_filter}")
 else:
     seg_filter = None
@@ -129,7 +135,7 @@ print("##################################################")
 print("#")
 
 # Loop for every batch-element (usually series)
-batch_folders = sorted([f for f in glob(join('/', workflow_dir, batch_name, '*'))])
+batch_folders = sorted([f for f in glob(join("/", workflow_dir, batch_name, "*"))])
 for batch_element_dir in batch_folders:
     print("#")
     print(f"# Processing batch-element {batch_element_dir}")
@@ -159,9 +165,7 @@ for batch_element_dir in batch_folders:
     for input_file in input_files:
         output_path = join(element_output_dir, basename(batch_element_dir))
         result, input_file = process_input_file(
-            struct_path=input_file,
-            dicom_dir=element_dicom_dir,
-            output_path=output_path
+            struct_path=input_file, dicom_dir=element_dicom_dir, output_path=output_path
         )
     generate_meta_info(result_dir=output_path)
 
@@ -184,8 +188,8 @@ if processed_count == 0:
     print("##################################################")
     print("#")
 
-    batch_input_dir = join('/', workflow_dir, operator_in_dir)
-    batch_output_dir = join('/', workflow_dir, operator_in_dir)
+    batch_input_dir = join("/", workflow_dir, operator_in_dir)
+    batch_output_dir = join("/", workflow_dir, operator_in_dir)
 
     batch_dicom_dir = join(batch_input_dir, dicom_in_dir)
     assert exists(batch_dicom_dir)
@@ -209,9 +213,7 @@ if processed_count == 0:
         for input_file in input_files:
             output_path = join(batch_output_dir, "dcmrtstruct2nii")
             result, input_file = process_input_file(
-                struct_path=input_file,
-                dicom_dir=batch_dicom_dir,
-                output_path=output_path
+                struct_path=input_file, dicom_dir=batch_dicom_dir, output_path=output_path
             )
         generate_meta_info(result_dir=output_path)
 

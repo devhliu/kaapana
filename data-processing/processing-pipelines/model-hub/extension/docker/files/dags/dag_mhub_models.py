@@ -1,16 +1,15 @@
-from airflow.utils.log.logging_mixin import LoggingMixin
-from airflow.utils.dates import days_ago
 from datetime import timedelta
+
 from airflow.models import DAG
-
-from kaapana.operators.LocalGetInputDataOperator import LocalGetInputDataOperator
-from kaapana.operators.DcmConverterOperator import DcmConverterOperator
-from kaapana.operators.Itk2DcmSegOperator import Itk2DcmSegOperator
+from airflow.utils.dates import days_ago
+from airflow.utils.log.logging_mixin import LoggingMixin
 from kaapana.operators.DcmSendOperator import DcmSendOperator
-from kaapana.operators.LocalMinioOperator import LocalMinioOperator
-from kaapana.operators.LocalWorkflowCleanerOperator import LocalWorkflowCleanerOperator
-from mhub.mHubOperator import mHubOperator
+from kaapana.operators.LocalGetInputDataOperator import \
+    LocalGetInputDataOperator
+from kaapana.operators.LocalWorkflowCleanerOperator import \
+    LocalWorkflowCleanerOperator
 
+from mhub.mHubOperator import mHubOperator
 
 ui_forms = {
     "workflow_form": {
@@ -21,10 +20,7 @@ ui_forms = {
                 "description": "Specify the port of the DICOM receiver.",
                 "type": "string",
                 "required": True,
-                "enum": [
-                    "platipy",
-                    "totalsegmentator"
-                ]
+                "enum": ["platipy", "totalsegmentator"],
             },
             "single_execution": {
                 "title": "single execution",
@@ -33,26 +29,22 @@ ui_forms = {
                 "default": True,
                 "readOnly": True,
             },
-        }
+        },
     }
 }
 
 log = LoggingMixin().log
 
 args = {
-    'ui_forms': ui_forms,
-    'ui_visible': True,
-    'owner': 'kaapana',
-    'start_date': days_ago(0),
-    'retries': 0,
-    'retry_delay': timedelta(seconds=30)
+    "ui_forms": ui_forms,
+    "ui_visible": True,
+    "owner": "kaapana",
+    "start_date": days_ago(0),
+    "retries": 0,
+    "retry_delay": timedelta(seconds=30),
 }
 
-dag = DAG(
-    dag_id='mhub-models',
-    default_args=args,
-    schedule_interval=None
-    )
+dag = DAG(dag_id="mhub-models", default_args=args, schedule_interval=None)
 
 
 get_input = LocalGetInputDataOperator(dag=dag)

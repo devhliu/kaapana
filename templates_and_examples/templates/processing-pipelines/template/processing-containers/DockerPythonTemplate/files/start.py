@@ -1,18 +1,17 @@
-import os
-from os import getenv
-from os.path import join, exists, dirname, basename
 from glob import glob
-from pathlib import Path
-
 # For multiprocessing -> usually you should scale via multiple containers!
 from multiprocessing.pool import ThreadPool
-
+from os import getenv
+from os.path import join, exists
+from pathlib import Path
 # For shell-execution
 from subprocess import PIPE, run
-execution_timeout=10
- 
+
+execution_timeout = 10
+
 # Counter to check if smth has been processed
 processed_count = 0
+
 
 # Process smth
 def process_input_file(filepath):
@@ -21,12 +20,15 @@ def process_input_file(filepath):
     processed_count += 1
     return True, filepath
 
+
 # Alternative Process smth via shell-command
 def process_input_file(filepath):
     global processed_count, execution_timeout
-    
+
     command = ["echo", "hello world!"]
-    output = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True, timeout=execution_timeout)
+    output = run(
+        command, stdout=PIPE, stderr=PIPE, universal_newlines=True, timeout=execution_timeout
+    )
     # command stdout output -> output.stdout
     # command stderr output -> output.stderr
     if output.returncode != 0:
@@ -57,6 +59,7 @@ def process_input_file(filepath):
         return False, filepath
     processed_count += 1
     return True, filepath
+
 
 workflow_dir = getenv("WORKFLOW_DIR", "None")
 workflow_dir = workflow_dir if workflow_dir.lower() != "none" else None
@@ -101,7 +104,7 @@ print("##################################################")
 print("#")
 
 # Loop for every batch-element (usually series)
-batch_folders = sorted([f for f in glob(join('/', workflow_dir, batch_name, '*'))])
+batch_folders = sorted([f for f in glob(join("/", workflow_dir, batch_name, "*"))])
 for batch_element_dir in batch_folders:
     print("#")
     print(f"# Processing batch-element {batch_element_dir}")
@@ -128,7 +131,7 @@ for batch_element_dir in batch_folders:
     # Loop for every input-file found with extension 'input_file_extension'
     for input_file in input_files:
         result, input_file = process_input_file(filepath=input_file)
-    
+
     # Alternative with multi-processing
     with ThreadPool(parallel_processes) as threadpool:
         results = threadpool.imap_unordered(process_input_file, input_files)
@@ -153,8 +156,8 @@ if processed_count == 0:
     print("##################################################")
     print("#")
 
-    batch_input_dir = join('/', workflow_dir, operator_in_dir)
-    batch_output_dir = join('/', workflow_dir, operator_in_dir)
+    batch_input_dir = join("/", workflow_dir, operator_in_dir)
+    batch_output_dir = join("/", workflow_dir, operator_in_dir)
 
     # check if input dir present
     if not exists(batch_input_dir):
@@ -174,7 +177,7 @@ if processed_count == 0:
         # Loop for every input-file found with extension 'input_file_extension'
         for input_file in input_files:
             result, input_file = process_input_file(filepath=input_file)
-        
+
         # Alternative with multi-processing
         with ThreadPool(parallel_processes) as threadpool:
             results = threadpool.imap_unordered(process_input_file, input_files)
@@ -205,5 +208,3 @@ else:
     print(f"# ----> {processed_count} FILES HAVE BEEN PROCESSED!")
     print("#")
     print("# DONE #")
-
-    

@@ -1,10 +1,7 @@
-import os
-import json
 import glob
-import pydicom
-import shutil
+import os
 import pathlib
-
+import shutil
 
 if __name__ == "__main__":
     print("# Starting nnUNet data preparation...")
@@ -36,12 +33,12 @@ if __name__ == "__main__":
     print(f"# task_modalities: {task_modalities}")
     print("#")
 
-    batches_dir = os.path.join('/', os.environ['WORKFLOW_DIR'], os.environ['BATCH_NAME'])
-    batch_folders = sorted([f for f in glob.glob(os.path.join(batches_dir, '*'))])
+    batches_dir = os.path.join("/", os.environ["WORKFLOW_DIR"], os.environ["BATCH_NAME"])
+    batch_folders = sorted([f for f in glob.glob(os.path.join(batches_dir, "*"))])
     print("# batches_dir {}".format(batches_dir))
     print("# Found {} batches".format(len(batch_folders)))
 
-    output_dir = os.path.join('/', os.environ['WORKFLOW_DIR'], operator_output_dir)
+    output_dir = os.path.join("/", os.environ["WORKFLOW_DIR"], operator_output_dir)
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
     for batch_element_dir in batch_folders:
         if len(input_dirs) != len(task_protocols):
@@ -72,7 +69,9 @@ if __name__ == "__main__":
 
             for nifti_file in nifti_files:
                 file_name = os.path.basename(nifti_file).split(".nii.gz")[0]
-                target_path = os.path.join(output_dir, "{}_{:04d}.nii.gz".format(file_name, protocol_index))
+                target_path = os.path.join(
+                    output_dir, "{}_{:04d}.nii.gz".format(file_name, protocol_index)
+                )
                 print("# Copy NIFTI: {} -> {}".format(nifti_file, target_path))
                 shutil.copyfile(nifti_file, target_path)
                 protocol_index += 1

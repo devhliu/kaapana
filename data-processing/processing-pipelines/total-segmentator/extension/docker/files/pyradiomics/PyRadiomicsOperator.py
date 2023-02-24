@@ -1,6 +1,10 @@
 from datetime import timedelta
 
-from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, default_registry, kaapana_build_version
+from kaapana.operators.KaapanaBaseOperator import (
+    KaapanaBaseOperator,
+    default_registry,
+    kaapana_build_version,
+)
 
 
 class PyRadiomicsOperator(KaapanaBaseOperator):
@@ -19,13 +23,15 @@ class PyRadiomicsOperator(KaapanaBaseOperator):
     - Code: https://pyradiomics.readthedocs.io/en/latest/
     """
 
-    def __init__(self,
-                 dag,
-                 segmentation_operator,
-                 alg_name=None,
-                 env_vars=None,
-                 execution_timeout=timedelta(minutes=90),
-                 **kwargs):
+    def __init__(
+        self,
+        dag,
+        segmentation_operator,
+        alg_name=None,
+        env_vars=None,
+        execution_timeout=timedelta(minutes=90),
+        **kwargs,
+    ):
         if env_vars is None:
             env_vars = {}
 
@@ -45,5 +51,5 @@ class PyRadiomicsOperator(KaapanaBaseOperator):
             execution_timeout=execution_timeout,
             ram_mem_mb=3000,
             ram_mem_mb_lmt=6000,
-            **kwargs
+            **kwargs,
         )

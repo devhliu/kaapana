@@ -1,29 +1,31 @@
-from fastapi import FastAPI
-from fastapi import Response,Request,status
-from init import auth_role_mapping_dict, logger
-import uvicorn
 import jwt
+import uvicorn
+from fastapi import FastAPI
+from fastapi import Response, Request, status
+
+from init import auth_role_mapping_dict, logger
 
 app = FastAPI()
 
-@app.get("/auth-check",status_code=status.HTTP_200_OK)
-async def auth_check(request: Request,response: Response):
+
+@app.get("/auth-check", status_code=status.HTTP_200_OK)
+async def auth_check(request: Request, response: Response):
     """
     Check if the user who made the request is mapped to the required roles in order to be authorized to access the requested resource.
     """
     # for header, value in request.headers.items():
     #     logger.warn(f"{header}:{value}")
-    requested_prefix = request.headers.get('x-forwarded-prefix')
+    requested_prefix = request.headers.get("x-forwarded-prefix")
     if requested_prefix is None:
-        requested_prefix = request.headers.get('x-forwarded-uri')
-        
+        requested_prefix = request.headers.get("x-forwarded-uri")
+
     if requested_prefix is None:
         response.status_code = status.HTTP_403_FORBIDDEN
         message = "No HTTP_X_FORWARDED_PREFIX could be identified within the request -> restricting access."
         logger.warn(message)
         return message
 
-    access_token = request.headers.get('x-forwarded-access-token')
+    access_token = request.headers.get("x-forwarded-access-token")
     if access_token is None:
         response.status_code = status.HTTP_403_FORBIDDEN
         message = "No x-forwarded-access-token could be identified within the request -> restricting access."
@@ -52,7 +54,7 @@ async def auth_check(request: Request,response: Response):
         message = f"No role specified for prefix: {requested_prefix}"
         logger.warn(message)
         return message
-    
+
     else:
         for user_role in user_roles:
             if user_role in prefix_roles_allowed:
@@ -60,11 +62,12 @@ async def auth_check(request: Request,response: Response):
                 message = f"User {user_requesting}: access granted for: {requested_prefix}"
                 logger.warn(message)
                 return message
-        
+
         response.status_code = status.HTTP_403_FORBIDDEN
         message = f"User ({user_roles=}) has not one of the allowed roles: {prefix_roles_allowed} -> access denied"
         logger.warn(message)
         return message
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

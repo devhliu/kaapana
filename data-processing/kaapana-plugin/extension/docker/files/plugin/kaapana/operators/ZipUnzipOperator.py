@@ -2,8 +2,11 @@ import os
 import glob
 from datetime import timedelta
 
-from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, default_registry, kaapana_build_version
-from kaapana.blueprints.kaapana_global_variables import BATCH_NAME, WORKFLOW_DIR
+from kaapana.operators.KaapanaBaseOperator import (
+    KaapanaBaseOperator,
+    default_registry,
+    kaapana_build_version,
+)
 
 
 class ZipUnzipOperator(KaapanaBaseOperator):
@@ -23,18 +26,19 @@ class ZipUnzipOperator(KaapanaBaseOperator):
     * When extracting the extracted files
     """
 
-    def __init__(self,
-                 dag,
-                 target_filename = None,
-                 subdir = None,
-                 mode = None, # 'zip' or 'unzip'
-                 batch_level = False,
-                 whitelist_files = None, # eg: "*.txt,*.png" or whole filenames
-                 blacklist_files = None, # eg: "*.txt,*.png" or whole filenames
-                 env_vars = None,
-                 execution_timeout=timedelta(minutes=10),
-                 **kwargs
-                 ):
+    def __init__(
+        self,
+        dag,
+        target_filename=None,
+        subdir=None,
+        mode=None,  # 'zip' or 'unzip'
+        batch_level=False,
+        whitelist_files=None,  # eg: "*.txt,*.png" or whole filenames
+        blacklist_files=None,  # eg: "*.txt,*.png" or whole filenames
+        env_vars=None,
+        execution_timeout=timedelta(minutes=10),
+        **kwargs,
+    ):
         """
         :param target_filename: Only for packing. The created file.
         :param subdir: Only for packing. Subdir used to pack, if empty all data are packed.
@@ -65,5 +69,5 @@ class ZipUnzipOperator(KaapanaBaseOperator):
             image_pull_secrets=["registry-secret"],
             env_vars=env_vars,
             execution_timeout=execution_timeout,
-            **kwargs
+            **kwargs,
         )

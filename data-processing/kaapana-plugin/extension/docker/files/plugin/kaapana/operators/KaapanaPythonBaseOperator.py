@@ -1,33 +1,42 @@
-import os
-import glob
 import functools
 from datetime import timedelta
 
-from airflow.operators.python import PythonOperator
 from airflow.models.skipmixin import SkipMixin
-from kaapana.operators.KaapanaBaseOperator import KaapanaBaseOperator, default_registry, kaapana_build_version
+from airflow.operators.python import PythonOperator
+from kaapana.operators.KaapanaBaseOperator import (
+    KaapanaBaseOperator,
+)
+
 
 def rest_self_udpate(func):
-    '''
+    """
     Every operator which should be adjustable from an api call should add this as an decorator above the python_callable:
     @rest_self_udpate
-    '''
+    """
+
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if kwargs["dag_run"] is not None and kwargs["dag_run"].conf is not None and 'rest_call' in kwargs["dag_run"].conf and kwargs["dag_run"].conf['rest_call'] is not None:
-            payload = kwargs["dag_run"].conf['rest_call']
+        if (
+            kwargs["dag_run"] is not None
+            and kwargs["dag_run"].conf is not None
+            and "rest_call" in kwargs["dag_run"].conf
+            and kwargs["dag_run"].conf["rest_call"] is not None
+        ):
+            payload = kwargs["dag_run"].conf["rest_call"]
             operator_conf = {}
-            if 'operators' in payload and self.name in payload['operators']:
-                operator_conf.update(payload['operators'][self.name])
-            if 'global' in payload:
-                operator_conf.update(payload['global'])
-   
+            if "operators" in payload and self.name in payload["operators"]:
+                operator_conf.update(payload["operators"][self.name])
+            if "global" in payload:
+                operator_conf.update(payload["global"])
+
             for k, v in operator_conf.items():
                 if k in self.__dict__.keys():
                     self.__dict__[k] = v
 
         return func(self, *args, **kwargs)
+
     return wrapper
+
 
 class KaapanaPythonBaseOperator(PythonOperator, SkipMixin):
     def __init__(
@@ -41,7 +50,7 @@ class KaapanaPythonBaseOperator(PythonOperator, SkipMixin):
         task_id=None,
         parallel_id=None,
         keep_parallel_id=True,
-        trigger_rule='all_success',
+        trigger_rule="all_success",
         retries=1,
         retry_delay=timedelta(seconds=30),
         execution_timeout=timedelta(minutes=30),
@@ -63,7 +72,6 @@ class KaapanaPythonBaseOperator(PythonOperator, SkipMixin):
         workflow_dir=None,
         **kwargs
     ):
-
         KaapanaBaseOperator.set_defaults(
             self,
             name=name,
@@ -88,7 +96,7 @@ class KaapanaPythonBaseOperator(PythonOperator, SkipMixin):
             batch_name=batch_name,
             workflow_dir=workflow_dir,
             delete_input_on_success=delete_input_on_success,
-            delete_output_on_start=delete_output_on_start
+            delete_output_on_start=delete_output_on_start,
         )
 
         super().__init__(

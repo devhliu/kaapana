@@ -1,12 +1,13 @@
 import json
-import os
 import logging
+import os
 
 auth_role_mapping_path = "/app/auth_role_mapping.json"
 global auth_role_mapping_dict
 
 
 logger = logging.getLogger("gunicorn.access")
+
 
 def load_auth_config():
     global auth_role_mapping_dict
@@ -29,5 +30,6 @@ def load_auth_config():
     logger.warn("")
     logger.warn(json.dumps(auth_role_mapping_dict, indent=4))
     logger.warn("")
+
 
 load_auth_config()
