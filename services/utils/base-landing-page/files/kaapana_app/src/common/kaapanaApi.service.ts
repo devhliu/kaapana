@@ -27,6 +27,18 @@ const kaapanaApiService = {
     })
   },
 
+  minioApiget(subUrl: any, payload: any) {
+    return new Promise((resolve, reject) => {
+      request.get('/kaapana-backend/storage' + subUrl, payload).then((response: any) => {
+        //console.log(response)
+        resolve(response)
+      }).catch((error: any) => {
+        console.log('Failed: ' + error.response.data)
+        reject(error)
+      })
+    })
+  },
+
   getExternalWebpages() {
     return new Promise((resolve, reject) => {
 
