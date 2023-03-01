@@ -100,7 +100,7 @@ spec:
           mountPath: /kaapana/mounted/workflows/plugins
         - name: airflow-dags
           mountPath: /kaapana/mounted/workflows/dags
-	- name: minio-buckets
+        - name: minio-buckets
           mountPath: /kaapana/mounted/miniobuckets
         # - name: ssh-key-path
         #   mountPath: /root/.ssh
@@ -133,7 +133,7 @@ spec:
         persistentVolumeClaim:
           claimName: af-plugins-pv-claim
       - name: minio-buckets
-      	persistentVolumeClaim:
+        persistentVolumeClaim:
           claimName: minio-buckets-pv-claim
       # - name: airflow-statsd-config
       #   configMap:
