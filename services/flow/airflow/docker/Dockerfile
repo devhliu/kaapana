@@ -14,8 +14,8 @@ ENV DICT_PATH /scripts/dicom_tag_dict.json
 WORKDIR /kaapana/app
 
 # run update again
-RUN apt-get update &&  apt-get dist-upgrade
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update -q -y &&  apt-get dist-upgrade -q -y
+RUN apt-get update -q -y && apt-get install -y --no-install-recommends \
         wget \
         curl \
         nano \
@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         skopeo \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3.8 -m pip install --upgrade pip && python3.8 -m pip install -U setuptools
+RUN python3 -m pip install --upgrade pip && python3 -m pip install -U setuptools
 
 COPY files/requirements.txt ./
 RUN python3 -m pip install --no-cache-dir -r requirements.txt --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.5.1/constraints-3.9.txt"

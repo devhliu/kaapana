@@ -10,3 +10,6 @@ kubernetes==23.6.0
 dicom_parser==1.2.3
 statsd==4.0.1
 monai==0.7.0
+ansible == 6.3.0
+openstacksdk == 0.61.0
+lxml

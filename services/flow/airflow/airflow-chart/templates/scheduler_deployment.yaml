@@ -164,8 +164,8 @@ spec:
           mountPath: /kaapana/mounted/workflows/data
         - name: dicomdir
           mountPath: /kaapana/mounted/pacsdata
-        - name: minio-buckets
-          mountPath: /kaapana/mounted/miniobuckets
+        - name: minio-data
+          mountPath: /kaapana/mounted/minio
         # - name: ssh-key-path
         #   mountPath: /root/.ssh
       volumes:
@@ -190,9 +190,9 @@ spec:
       - name: modeldata
         persistentVolumeClaim:
           claimName: models-pv-claim
-      - name: minio-buckets
+      - name: minio-data
         persistentVolumeClaim:
-          claimName: minio-buckets-pv-claim
+          claimName: minio-pv-claim
       - name: ctpinput
         persistentVolumeClaim:
           claimName: ctp-data-pv-claim
