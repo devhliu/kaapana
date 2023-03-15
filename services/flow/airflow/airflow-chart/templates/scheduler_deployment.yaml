@@ -112,6 +112,12 @@ spec:
           value: "{{ .Values.global.hostname }}"
         - name: HTTPS_PORT
           value: "{{ .Values.global.https_port }}"
+        - name: http_proxy
+          value: {{ .Values.global.http_proxy }}
+        - name: https_proxy
+          value: {{ .Values.global.http_proxy }}
+        - name: no_proxy
+          value: .svc
         - name: INSTANCE_ID
           value: "{{ .Values.global.instance_id }}"
         - name: INSTANCE_NAME

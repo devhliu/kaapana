@@ -1,7 +1,8 @@
 FROM local-only/base-python-cpu:latest
 
-ENV http_proxy http://www-int2.dkfz-heidelberg.de:80
-ENV https_proxy http://www-int2.dkfz-heidelberg.de:80
+# ENV http_proxy http://www-int2.dkfz-heidelberg.de:80
+# ENV https_proxy http://www-int2.dkfz-heidelberg.de:80
+
 LABEL IMAGE="airflow"
 LABEL VERSION="2.2.5"
 LABEL CI_IGNORE="False"
@@ -33,7 +34,7 @@ RUN python3 -m pip install --no-cache-dir -r requirements.txt --constraint "http
 
 COPY files/scripts/ /scripts
 
-RUN ansible-galaxy collection install openstack.cloud
+RUN ansible-galaxy collection install openstack.cloud:==1.8.0
 RUN ansible-galaxy collection install community.docker
 COPY files/bootstrap.sh /kaapana/app/bootstrap.sh
 RUN chmod +x /kaapana/app/bootstrap.sh
