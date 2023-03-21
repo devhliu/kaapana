@@ -36,6 +36,8 @@ COPY files/scripts/ /scripts
 
 RUN ansible-galaxy collection install openstack.cloud:==1.8.0
 RUN ansible-galaxy collection install community.docker
+RUN ansible-galaxy collection install community.libvirt:==1.2.0
+
 COPY files/bootstrap.sh /kaapana/app/bootstrap.sh
 RUN chmod +x /kaapana/app/bootstrap.sh
 
