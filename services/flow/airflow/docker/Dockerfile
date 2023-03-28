@@ -1,8 +1,5 @@
 FROM local-only/base-python-cpu:latest
 
-# ENV http_proxy http://www-int2.dkfz-heidelberg.de:80
-# ENV https_proxy http://www-int2.dkfz-heidelberg.de:80
-
 LABEL IMAGE="airflow"
 LABEL VERSION="2.2.5"
 LABEL CI_IGNORE="False"
