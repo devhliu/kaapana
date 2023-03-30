@@ -12,10 +12,10 @@ import random
 import requests
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, Response
-from psycopg2.errors import UniqueViolation
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.future import select
 from urllib3.util import Timeout
 
 from app.config import settings
@@ -42,8 +42,10 @@ TIMEOUT = Timeout(TIMEOUT_SEC)
 
 
 def delete_kaapana_instance(db: Session, kaapana_instance_id: int):
-    db_kaapana_instance = (
-        db.query(models.KaapanaInstance).filter_by(id=kaapana_instance_id).first()
+    db_kaapana_instance = (await (
+        db.select(models.KaapanaInstance)
+        .where(models.KaapnaInstance.id == kaapana_instance_id))
+        .first()
     )
     if not db_kaapana_instance:
         raise HTTPException(status_code=404, detail="Kaapana instance not found")
@@ -316,7 +318,7 @@ def create_job(db: Session, job: schemas.JobCreate, service_job: str = False):
     try:
         db.commit()  # writing, if kaapana_id and external_job_id already exists will fail due to duplicate error
     except IntegrityError as e:
-        assert isinstance(e.orig, UniqueViolation)  # proves the original exception
+        #assert isinstance(e.orig, UniqueViolation)  # proves the original exception
         return (
             db.query(models.Job)
             .filter_by(
@@ -1054,14 +1056,14 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate):
     return db_dataset
 
 
-def get_dataset(db: Session, name: str, raise_if_not_existing=True):
-    db_dataset = db.query(models.Dataset).filter_by(name=name).first()
+async def get_dataset(db: Session, name: str, raise_if_not_existing=True):
+    db_dataset = (await db.execute(select(models.Dataset).where(models.Dataset.name == name))).first()
     if not db_dataset and raise_if_not_existing:
         raise HTTPException(status_code=404, detail="Dataset not found")
     return db_dataset
 
 
-def get_datasets(
+async def get_datasets(
     db: Session,
     instance_name: str = None,
     limit=None,
@@ -1078,13 +1080,12 @@ def get_datasets(
     #         .all()
     #     )
     # else:
-    db_datasets = (
-        db.query(models.Dataset)
-        # .join(models.Dataset.kaapana_instance, aliased=True)
-        .order_by(desc(models.Dataset.time_updated))
-        .limit(limit)
-        .all()
-    )
+    db_datasets = (await db.execute(
+                select(models.Dataset)
+                .where(models.Dataset.username == username)
+                .join(models.Dataset.kaapana_instance) # TODO, aliased=True)
+                .order_by(desc(models.Dataset.time_updated))
+                .limit(limit))).all()
 
     return db_datasets
 

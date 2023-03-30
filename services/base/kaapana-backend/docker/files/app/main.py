@@ -13,7 +13,7 @@ from .storage import routers as storage
 from .users import routers as users
 
 from .dependencies import get_query_token, get_token_header
-from .database import SessionLocal, engine
+from .database import SessionMaker, engine
 from .decorators import repeat_every
 from .workflows import models
 from .workflows.crud import (
@@ -22,7 +22,6 @@ from .workflows.crud import (
     sync_n_clean_qsr_jobs_with_airflow,
 )
 
-models.Base.metadata.create_all(bind=engine)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -32,9 +31,15 @@ app = FastAPI()
 
 
 @app.on_event("startup")
+async def init_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.drop_all)
+        await conn.run_sync(models.Base.metadata.create_all)
+
+@app.on_event("startup")
 @repeat_every(seconds=float(os.getenv("REMOTE_SYNC_INTERVAL", 2.5)))
 def periodically_get_remote_updates():
-    with SessionLocal() as db:
+    with SessionMaker() as db:
         try:
             get_remote_updates(db, periodically=True)
         except Exception as e:
