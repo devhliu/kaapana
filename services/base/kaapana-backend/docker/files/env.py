@@ -12,7 +12,7 @@ SERVICES_NAMESPACE = os.getenv('SERVICES_NAMESPACE', None)
 assert SERVICES_NAMESPACE
 
 config = context.config
-config.set_main_option('sqlalchemy.url', f"postgresql://kaapanauser:kaapanapassword@kaapana-backend-postgres-service.{SERVICES_NAMESPACE}.svc:5432")
+config.set_main_option('sqlalchemy.url', f"postgresql+asyncpg://kaapanauser:kaapanapassword@kaapana-backend-postgres-service.{SERVICES_NAMESPACE}.svc:5432")
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
