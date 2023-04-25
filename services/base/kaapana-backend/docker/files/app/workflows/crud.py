@@ -14,7 +14,7 @@ from cryptography.fernet import Fernet
 from fastapi import HTTPException, Response
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy.future import select
 from urllib3.util import Timeout
 
@@ -41,7 +41,7 @@ TIMEOUT_SEC = 5
 TIMEOUT = Timeout(TIMEOUT_SEC)
 
 
-def delete_kaapana_instance(db: Session, kaapana_instance_id: int):
+async def delete_kaapana_instance(db: Session, kaapana_instance_id: int):
     db_kaapana_instance = (await (
         db.select(models.KaapanaInstance)
         .where(models.KaapnaInstance.id == kaapana_instance_id))
@@ -60,68 +60,90 @@ def delete_kaapana_instances(db: Session):
     return {"ok": True}
 
 
-def get_kaapana_instance(db: Session, instance_name: str = None):
-    return (
-        db.query(models.KaapanaInstance)
-        .filter_by(instance_name=instance_name or settings.instance_name)
-        .first()
-    )
+async def get_kaapana_instance(db: Session, instance_name: str = None):
+    logging.info((instance_name or settings.instance_name))
+    query = (select(models.KaapanaInstance)
+        .where(models.KaapanaInstance.instance_name == (instance_name or settings.instance_name))
+        )
+    res = await db.execute(query)
+    return res.first()
+    # return ( await (
+    #     db.select(models.KaapanaInstance)
+    #     .where(instance_name=instance_name or settings.instance_name)
+    #     .first()
+    # ))
 
-def get_kaapana_instances(
+async def get_kaapana_instances(
     db: Session, filter_kaapana_instances: schemas.FilterKaapanaInstances = None
 ):
     if (
         filter_kaapana_instances is not None
         and filter_kaapana_instances.instance_names
     ):
-        return (
-            db.query(models.KaapanaInstance)
-            .filter(
-                models.KaapanaInstance.instance_name.in_(
-                    filter_kaapana_instances.instance_names
-                ),
-            )
-            .all()
-        )
+        query = (select(models.KaapanaInstance)
+                .where(models.KaapanaInstance.instance_name in filter_kaapana_instances.instance_names))
+        res = await db.execute(query)
+        return res.all()
+        # return (
+        #     db.query(models.KaapanaInstance)
+        #     .filter(
+        #         models.KaapanaInstance.instance_name.in_(
+        #             filter_kaapana_instances.instance_names
+        #         ),
+        #     )
+        #     .all()
+        # )
     elif (
         filter_kaapana_instances is not None
         and filter_kaapana_instances.dag_id is not None
     ):
-        return (
-            db.query(models.KaapanaInstance)
-            .filter(
-                models.KaapanaInstance.allowed_dags.contains(
-                    filter_kaapana_instances.dag_id
-                ),
-            )
-            .all()
-        )
+        query = (select(models.KaapanaInstance)
+                .where(models.KaapanaInstance.allowed_dags.contains(filter_kaapana_instances.dag_id)
+                ))
+        res = await db.execute(query)
+        return res.all()
+        # return (
+        #     db.query(models.KaapanaInstance)
+        #     .filter(
+        #         models.KaapanaInstance.allowed_dags.contains(
+        #             filter_kaapana_instances.dag_id
+        #         ),
+        #     )
+        #     .all()
+        # )
     elif (
         filter_kaapana_instances is not None
         and filter_kaapana_instances.instance_names
         and filter_kaapana_instances.dag_id is not None
     ):
-        return (
-            db.query(models.KaapanaInstance)
-            .filter(
-                models.KaapanaInstance.allowed_dags.contains(
-                    filter_kaapana_instances.dag_id
-                ),
-                models.KaapanaInstance.instance_name.in_(
-                    filter_kaapana_instances.instance_names
-                ),
-            )
-            .all()
-        )
+        query = (select(models.KaapanaInstance)
+                .where((filter_kaapana_instances.dag_id in models.KaapanaInstance.allowed_dags) and models.KaapanaInstance.instance_name in filter_kaapana_instances.instance_names))
+        res = await db.execute(query)
+        return res.all()
+        # return (
+        #     db.query(models.KaapanaInstance)
+        #     .filter(
+        #         models.KaapanaInstance.allowed_dags.contains(
+        #             filter_kaapana_instances.dag_id
+        #         ),
+        #         models.KaapanaInstance.instance_name.in_(
+        #             filter_kaapana_instances.instance_names
+        #         ),
+        #     )
+        #     .all()
+        # )
     else:
-        return (
-            db.query(models.KaapanaInstance)
-            .order_by(models.KaapanaInstance.remote, models.KaapanaInstance.instance_name) 
-            .all()
-        )
+        query = select(models.KaapanaInstance).order_by(models.KaapanaInstance.remote, models.KaapanaInstance.instance_name)
+        res = await db.execute(query)
+        return res.all()
+        # return (
+        #     db.query(models.KaapanaInstance)
+        #     .order_by(models.KaapanaInstance.remote, models.KaapanaInstance.instance_name) 
+        #     .all()
+        # )
 
 
-def create_and_update_client_kaapana_instance(
+async def create_and_update_client_kaapana_instance(
     db: Session,
     client_kaapana_instance: schemas.ClientKaapanaInstanceCreate,
     action="create",
@@ -141,12 +163,12 @@ def create_and_update_client_kaapana_instance(
     )
     allowed_datasets = json.dumps(
         [
-            schemas.AllowedDataset(**get_dataset(db, name=dataset_name).__dict__).dict()
+            schemas.AllowedDataset(**(await get_dataset(db, name=dataset_name)).__dict__).dict()
             for dataset_name in client_kaapana_instance.allowed_datasets
-            if dataset_name in [ds.name for ds in get_datasets(db)]
+            if dataset_name in [ds.name for ds in await get_datasets(db)]
         ]
     )
-    db_client_kaapana_instance = get_kaapana_instance(db)
+    db_client_kaapana_instance = await get_kaapana_instance(db)
     if action == "create":
         if db_client_kaapana_instance:
             raise HTTPException(
@@ -201,8 +223,9 @@ def create_and_update_client_kaapana_instance(
     logging.info("Updating Kaapana Instance successful!")
 
     db.add(db_client_kaapana_instance)
-    db.commit()
-    db.refresh(db_client_kaapana_instance)
+    await db.flush()
+    await db.commit()
+    await db.refresh(db_client_kaapana_instance)
     return db_client_kaapana_instance
 
 
@@ -349,11 +372,19 @@ def create_job(db: Session, job: schemas.JobCreate, service_job: str = False):
     return db_job
 
 
-def get_job(db: Session, job_id: int = None, run_id: str = None):
+async def get_job(db: Session, job_id: int = None, run_id: str = None):
     if job_id is not None:
-        db_job = db.query(models.Job).filter_by(id=job_id).first()
+        query = (
+            select(models.Job)
+            .where(models.Job.id==job_id)
+        )
+        # db_job = db.query(models.Job).filter_by(id=job_id).first()
     elif run_id is not None:
-        db_job = db.query(models.Job).filter_by(run_id=run_id).first()
+        query = (
+            select(models.Job)
+            .where(models.Job.run_id==run_id)
+        )
+        # db_job = db.query(models.Job).filter_by(run_id=run_id).first()
     # if not db_job:
     else:
         logging.warning(
@@ -361,7 +392,8 @@ def get_job(db: Session, job_id: int = None, run_id: str = None):
         )
         return None
         # raise HTTPException(status_code=404, detail="Job not found")
-    return db_job
+    res = await db.execute(query)
+    return res.first()
 
 
 def delete_job(db: Session, job_id: int, remote: bool = True):
@@ -396,7 +428,7 @@ def delete_job_force(db: Session, job_id: int):
     return {"ok": True}
 
 
-def get_jobs(
+async def get_jobs(
     db: Session,
     instance_name: str = None,
     workflow_name: str = None,
@@ -404,65 +436,62 @@ def get_jobs(
     remote: bool = True,
     limit=None,
 ):
+    # TODO: add aliased=True (legacy) to all joins
     if instance_name is not None and status is not None:
-        return (
-            db.query(models.Job)
+        query = (
+            select(models.Job)
             .filter_by(status=status)
-            .join(models.Job.kaapana_instance, aliased=True)
+            .join(models.Job.kaapana_instance)
             .filter_by(instance_name=instance_name)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
-            .all()
-        )  # same as org but w/o filtering by remote
+        ) # same as org but w/o filtering by remote
     elif workflow_name is not None and status is not None:
-        return (
-            db.query(models.Job)
+        query = (
+            select(models.Job)
             .filter_by(status=status)
-            .join(models.Job.workflow, aliased=True)
+            .join(models.Job.workflow)
             .filter_by(workflow_name=workflow_name)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
-            .all()
         )
     elif instance_name is not None:
-        return (
-            db.query(models.Job)
-            .join(models.Job.kaapana_instance, aliased=True)
+        query = (
+            select(models.Job)
+            .join(models.Job.kaapana_instance)
             .filter_by(instance_name=instance_name)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
             .all()
-        )  # same as org but w/o filtering by remote
+        ) # same as org but w/o filtering by remote
     elif workflow_name is not None:
-        return (
-            db.query(models.Job)
-            .join(models.Job.workflow, aliased=True)
+        query = (
+            select(models.Job)
+            .join(models.Job.workflow)
             .filter_by(workflow_name=workflow_name)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
-            .all()
         )
     elif status is not None:
-        return (
-            db.query(models.Job)
+        query = (
+            select(models.Job)
             .filter_by(status=status)
-            .join(models.Job.kaapana_instance, aliased=True)
+            .join(models.Job.kaapana_instance,)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
-            .all()
-        )  # same as org but w/o filtering by remote
+        ) # same as org but w/o filtering by remote
     else:
-        return (
-            db.query(models.Job)
-            .join(models.Job.workflow, aliased=True)
-            .join(models.Workflow.kaapana_instance, aliased=True)
+        query = (
+            select(models.Job)
+            .join(models.Job.workflow)
+            .join(models.Workflow.kaapana_instance)
             .filter_by(remote=remote)
             .order_by(desc(models.Job.time_updated))
             .limit(limit)
-            .all()
         )
         # explanation: db.query(models.Job) returns a Query object; .join() creates more narrow Query objects ; filter_by() applies the filter criterion to the remaining Query (source: https://docs.sqlalchemy.org/en/14/orm/query.html#sqlalchemy.orm.Query)
-
+    res = await db.execute(query)
+    return res.all()
 
 def update_job(db: Session, job=schemas.JobUpdate, remote: bool = True):
     utc_timestamp = get_utc_timestamp()
@@ -1104,7 +1133,7 @@ def delete_datasets(db: Session):
     return {"ok": True}
 
 
-def update_dataset(db: Session, dataset=schemas.DatasetUpdate):
+async def update_dataset(db: Session, dataset=schemas.DatasetUpdate):
     logging.info(f"Updating dataset {dataset.name}")
     db_dataset = get_dataset(db, dataset.name, raise_if_not_existing=False)
 

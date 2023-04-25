@@ -142,24 +142,26 @@ def put_client_kaapana_instance(
         db=db, client_kaapana_instance=client_kaapana_instance, action="update"
     )
 
-@router.get("/kaapana-instance", response_model=schemas.KaapanaInstance)
-def get_kaapana_instance(instance_name: str = None, db: Session = Depends(get_db)):
-    return crud.get_kaapana_instance(db, instance_name)
+@router.get("/kaapana-instance", response_model=Union[schemas.KaapanaInstance, None])
+async def get_kaapana_instance(instance_name: str = None, db: Session = Depends(get_db)):
+    res =  await crud.get_kaapana_instance(db, instance_name)
+    return res
 
 @router.post(
     "/get-kaapana-instances", response_model=List[schemas.KaapanaInstance]
 )
-def get_kaapana_instances(
+async def get_kaapana_instances(
     filter_kaapana_instances: schemas.FilterKaapanaInstances = None,
     db: Session = Depends(get_db),
 ):
-    return crud.get_kaapana_instances(
+    filter_kaapana_instances = None
+    return await crud.get_kaapana_instances(
         db, filter_kaapana_instances=filter_kaapana_instances
     )
 
 @router.delete("/kaapana-instance")
-def delete_kaapana_instance(kaapana_instance_id: int, db: Session = Depends(get_db)):
-    return crud.delete_kaapana_instance(db, kaapana_instance_id=kaapana_instance_id)
+async def delete_kaapana_instance(kaapana_instance_id: int, db: Session = Depends(get_db)):
+    return await crud.delete_kaapana_instance(db, kaapana_instance_id=kaapana_instance_id)
 
 
 @router.delete("/kaapana-instances")
@@ -184,20 +186,20 @@ def create_job(request: Request, job: schemas.JobCreate, db: Session = Depends(g
 
 @router.get("/job", response_model=schemas.JobWithKaapanaInstance)
 # also okay: JobWithWorkflow
-def get_job(job_id: int = None, run_id: str = None, db: Session = Depends(get_db)):
-    return crud.get_job(db, job_id, run_id)
+async def get_job(job_id: int = None, run_id: str = None, db: Session = Depends(get_db)):
+    return await crud.get_job(db, job_id, run_id)
 
 
 @router.get("/jobs", response_model=List[schemas.JobWithWorkflowWithKaapanaInstance])
 # also okay: JobWithWorkflow; JobWithKaapanaInstance
-def get_jobs(
+async def get_jobs(
     instance_name: str = None,
     workflow_name: str = None,
     status: str = None,
     limit: int = None,
     db: Session = Depends(get_db),
 ):
-    return crud.get_jobs(
+    return await crud.get_jobs(
         db, instance_name, workflow_name, status, remote=False, limit=limit
     )
 
@@ -441,8 +443,8 @@ def get_datasets(
 
 
 @router.put("/dataset", response_model=schemas.Dataset)
-def put_dataset(dataset: schemas.DatasetUpdate, db: Session = Depends(get_db)):
-    return crud.update_dataset(db, dataset)
+async def put_dataset(dataset: schemas.DatasetUpdate, db: Session = Depends(get_db)):
+    return await crud.update_dataset(db, dataset)
 
 
 @router.delete("/dataset")
