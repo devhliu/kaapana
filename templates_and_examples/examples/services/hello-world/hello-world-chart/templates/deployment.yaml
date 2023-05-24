@@ -4,8 +4,8 @@ kind: Deployment
 metadata:
   # This name uniquely identifies the Deployment
   name: hello-world
+  # namespace: "services"
   namespace: "{{ .Values.global.services_namespace }}"
-  #namespace: "{{ .Values.global.services_namespace }}"
 spec:
   replicas: 1
   selector:
@@ -21,13 +21,14 @@ spec:
       containers:
       - name: hello-world
         image: "{{ .Values.global.registry_url }}/hello-world:{{ .Values.global.kaapana_build_version  }}"
+        # image: <docker-registry><docker-repo>/hello-world:<version-tag>
         imagePullPolicy: Always
         env: # Environment variables
         - name: SECRET_KEY
           value: kaapana-secret
         - name: HELLO_WORLD_USER
           value: Kaapana
-          #value: {{ .Values.hello_world_user }}
+          # value: {{ .Values.hello_world_user }}
         - name: APPLICATION_ROOT
           value: "/hello-world"
         ports: # Port(s) on which your application runs
