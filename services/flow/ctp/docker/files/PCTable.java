@@ -250,6 +250,8 @@ public class PCTable extends Hashtable<String,LinkedList<String>> {
 		new PC("VLPhotographicImageStorage","$ts-jpeglossless,$ts-native"),
 		new PC("VLSlideCoordinatesMicroscopicImageStorage","$ts-jpeglossless,$ts-native"),
 		new PC("VLWholeSlideMicroscopyImageStorage","$ts-jpeglossless,JPEGBaseline,$ts-native"),
+		new PC("VLWholeSlideMicroscopyImageStorage","$ts-jpeg2000lossless,$ts-native"),
+		new PC("VLWholeSlideMicroscopyImageStorage","$ts-jpeg2000lossy,$ts-native"),
 		new PC("VOILUTBox","$ts-native"),
 		new PC("XAXRFGrayscaleSoftcopyPresentationStateStorage","$ts-native"),
 		new PC("XRay3DAngiographicImageStorage","$ts-jpeglossless,JPEGBaseline,$ts-native"),
