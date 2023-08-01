@@ -10,7 +10,7 @@ from kaapana.operators.LocalMinioOperator import LocalMinioOperator
 from kaapana.operators.ZipUnzipOperator import ZipUnzipOperator
 from kaapana.operators.DcmSendOperator import DcmSendOperator
 from kaapana.blueprints.json_schema_templates import schema_minio_form
-from kaapana.operators.WSIconvOperator import WSIconvOperator
+from wsiconv.WSIConvOperator import WSIconvOperator
 
 
 log = LoggingMixin().log
