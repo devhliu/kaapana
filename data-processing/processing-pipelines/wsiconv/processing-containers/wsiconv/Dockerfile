@@ -1,5 +1,5 @@
 FROM local-only/base-installer:latest
-LABEL IMAGE ="wsiconv"
+LABEL IMAGE="wsiconv"
 LABEL VERSION="1.0.0"
 LABEL CI_IGNORE="False"
 
